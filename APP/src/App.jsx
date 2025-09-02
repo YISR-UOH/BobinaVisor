@@ -13,7 +13,7 @@ function App() {
   const handleFiles = async (fileArr) => {
     // Ordenar por nombre descendente (YYYYMMDD-HHMMSS.csv)
     const sorted = fileArr
-      .filter((f) => f.name.endsWith(".csv"))
+      .filter((f) => f.name.toLowerCase().endsWith(".csv"))
       .sort((a, b) => b.name.localeCompare(a.name));
     const limited = sorted.slice(0, n);
     // Solo pasar los N archivos más recientes a getAllData
