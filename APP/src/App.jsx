@@ -17,8 +17,11 @@ function App() {
       .sort((a, b) => b.name.localeCompare(a.name));
     const limited = sorted.slice(0, n);
     // Solo pasar los N archivos más recientes a getAllData
+    console.log(limited.length);
     const names = await getAllData(limited);
+    console.log(names.length);
     const filtered = limited.filter((f) => names.includes(f.name));
+    console.log(filtered.length);
     setFiles(filtered);
   };
 

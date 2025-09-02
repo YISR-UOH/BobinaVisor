@@ -7,7 +7,7 @@ export default function CheckStatusModule({ files }) {
   if (loading)
     return <div style={{ marginTop: 20 }}>Cargando conteo de rollos...</div>;
   if (error)
-    return <div style={{ color: "red" }}>Error countItems: {error}</div>;
+    return <div style={{ color: "red" }}>Error CheckStatus: {error}</div>;
   if (!data) return null;
 
   return (

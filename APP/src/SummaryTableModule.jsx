@@ -8,7 +8,8 @@ export default function SummaryTableModule({ files, n = 20 }) {
   const { data, loading, error } = useSummaryData(files, n);
 
   if (loading) return <div>Cargando resumen...</div>;
-  if (error) return <div style={{ color: "red" }}>Error: {error}</div>;
+  if (error)
+    return <div style={{ color: "red" }}>Error SummaryTable: {error}</div>;
   if (!data || !data.rows || data.rows.length === 0)
     return <div>No hay datos para mostrar.</div>;
 
