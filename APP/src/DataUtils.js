@@ -123,17 +123,17 @@ import Papa from "papaparse";
 export async function getAllData(files) {
   // Extraer fecha de nombre de archivo: YYYYMMDD-HHMMSS.csv
   const fileInfos = files
-    .filter((f) => f.name.toLowerCase().endsWith(".csv"))
-    .map((f) => {
-      const [dateStr] = f.name.split(".");
-      const dt = parseDateTimeFromFilename(dateStr);
-      return {
-        file: f,
-        name: f.name,
-        date: dt,
-        day: dt.toISOString().slice(0, 10),
-      };
-    });
+  .filter((f) => f.name.toLowerCase().endsWith(".csv"))
+  .map((f) => {
+    const [dateStr] = f.name.split(".");
+    const dt = parseDateTimeFromFilename(dateStr);
+    return {
+      file: f,
+      name: f.name,
+      date: dt,
+      day: dt.toISOString().slice(0, 10),
+    };
+  });
   // Agrupar por día y obtener el archivo más reciente de cada día
   const byDay = {};
   for (const info of fileInfos) {
