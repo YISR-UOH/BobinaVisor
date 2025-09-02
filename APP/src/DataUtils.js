@@ -123,7 +123,7 @@ import Papa from "papaparse";
 export async function getAllData(files) {
   // Extraer fecha de nombre de archivo: YYYYMMDD-HHMMSS.csv
   const fileInfos = files
-    .filter((f) => f.name.endsWith(".csv"))
+    .filter((f) => f.name.toLowerCase().endsWith(".csv"))
     .map((f) => {
       const [dateStr] = f.name.split(".");
       const dt = parseDateTimeFromFilename(dateStr);
