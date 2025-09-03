@@ -2,7 +2,7 @@ import { useState } from "react";
 import CountItemsModule from "./CountItemsModule";
 import CheckStatusModule from "./CheckStatusModule";
 import SummaryTableModule from "./SummaryTableModule";
-import "./App.css";
+import "./style.css";
 
 import { getAllData } from "./DataUtils";
 
@@ -37,7 +37,7 @@ function App() {
             <input
               type="number"
               min={1}
-              max={100}
+              max={1000}
               value={n}
               onChange={(e) => setN(Number(e.target.value))}
               style={{ width: 60 }}
