@@ -322,16 +322,8 @@ export async function getLastNDays(files, n = 20) {
     }
   }
   if (dfs.length === 0) {
-    return new dfd.DataFrame({
-      columns: [
-        "ROLL_ID",
-        "PAPER_CODE",
-        "WIDTH",
-        "ESTADO",
-        "COMPLETA",
-        "Date created",
-      ],
-    });
+    return new dfd.DataFrame([], {
+  columns: ["ROLL_ID","PAPER_CODE","WIDTH","ESTADO","COMPLETA","Date created"],});
   }
   return dfd.concat({ dfList: dfs, axis: 0 });
 }
