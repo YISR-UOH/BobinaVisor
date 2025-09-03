@@ -389,8 +389,8 @@ export function countItems(df) {
   // Filtrar primero por 'COMPLETA' == 'Saldo'
   let filtered = df;
 
-  const maskSaldo = filtered[“COMPLETA”].values.map(v => String(v).trim().toLowerCase() === “saldo”);
-  const maskTurno = filtered[“Turno”].values.map(v => Number(v) === 1);
+  const maskSaldo = filtered["COMPLETA"].values.map(v => String(v).trim().toLowerCase() === "saldo");
+  const maskTurno = filtered["Turno"].values.map(v => Number(v) === 1);
   filtered = filtered.loc({ rows: maskSaldo.map((m,i) => m && maskTurno[i]) });
   
   
