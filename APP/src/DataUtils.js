@@ -389,8 +389,11 @@ export function countItems(df) {
   // Filtrar primero por 'COMPLETA' == 'Saldo'
   let filtered = df;
 
-  filtered = filtered.iloc({ rows: filtered["COMPLETA"].eq("Saldo") });
-  filtered = filtered.loc({ rows: filtered["Turno"].eq(1) });
+  const maskSaldo = filtered[“COMPLETA”].values.map(v => String(v).trim().toLowerCase() === “saldo”);
+  const maskTurno = filtered[“Turno”].values.map(v => Number(v) === 1);
+  filtered = filtered.loc({ rows: maskSaldo.map((m,i) => m && maskTurno[i]) });
+  
+  
   // Agrupar y contar
   if (filtered.shape[0] === 0) {
     return new dfd.DataFrame({ columns: ["PAPER_CODE", "WIDTH", "Cantidad"] });
