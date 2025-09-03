@@ -172,7 +172,7 @@ function parseDateTimeFromFilename(name) {
 export async function getTurns(files) {
   // Ordenar archivos por fecha descendente
   const fileInfos = files
-    .filter((f) => f.name.endsWith(".csv"))
+    .filter((f) => f.name.toLowerCase().endsWith(".csv"))
     .map((f) => {
       const [dateStr] = f.name.split(".");
       const dt = parseDateTimeFromFilename(dateStr);
