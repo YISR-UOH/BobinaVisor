@@ -100,11 +100,11 @@ export default function CountItemsModule({ files }) {
           </div>
 
           {/* TODO: lg:grid-cols-5 o lg:grid-cols-4 */}
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="m-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {filteredPapers.map(([paper, info]) => (
               <article
                 key={paper}
-                className="rounded-md border border-slate-200 bg-white p-3 shadow-sm"
+                className="rounded-md border border-slate-200 bg-white p-2 shadow-sm"
               >
                 <header className="mb-1 flex items-center justify-between">
                   <h3 className="text-sm leading-tight font-semibold text-slate-900">
