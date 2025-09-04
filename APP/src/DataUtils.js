@@ -123,17 +123,17 @@ import Papa from "papaparse";
 export async function getAllData(files) {
   // Extraer fecha de nombre de archivo: YYYYMMDD-HHMMSS.csv
   const fileInfos = files
-  .filter((f) => f.name.toLowerCase().endsWith(".csv"))
-  .map((f) => {
-    const [dateStr] = f.name.split(".");
-    const dt = parseDateTimeFromFilename(dateStr);
-    return {
-      file: f,
-      name: f.name,
-      date: dt,
-      day: dt.toISOString().slice(0, 10),
-    };
-  });
+    .filter((f) => f.name.toLowerCase().endsWith(".csv"))
+    .map((f) => {
+      const [dateStr] = f.name.split(".");
+      const dt = parseDateTimeFromFilename(dateStr);
+      return {
+        file: f,
+        name: f.name,
+        date: dt,
+        day: dt.toISOString().slice(0, 10),
+      };
+    });
   // Agrupar por día y obtener el archivo más reciente de cada día
   const byDay = {};
   for (const info of fileInfos) {
@@ -226,31 +226,33 @@ export async function readDataFrame(files) {
       // Agregar columna de fecha desde el nombre del archivo
       const [dateStr] = file.name.split(".");
       const dateCreated = parseDateTimeFromFilename(dateStr);
-      const dataWithDate = parsed.data.map((row) => ({
+      let dataWithDate = parsed.data.map((row) => ({
         ...row,
         "Date created": dateCreated,
       }));
-      let df = new dfd.DataFrame(dataWithDate);
-      // Normalizar nombres de columna: quitar comillas dobles
-      const colMap = {};
-      df.columns.forEach((col) => {
-        const clean = String(col).replace(/^"|"$/g, "");
-        if (clean !== col) colMap[col] = clean;
+      // Filtrar según reglas de negocio
+      dataWithDate = dataWithDate.filter(
+        (row) =>
+          row["LOCATION"] !== "ULOG" &&
+          row["LOCATION"] !== "DPBQ" &&
+          row["ESTADO"] === "STOCK" &&
+          row["DEPO"] === "Planta SFM"
+      );
+      // Seleccionar columnas
+      dataWithDate = dataWithDate.map((row) => {
+        return {
+          ROLL_ID: row["ROLL_ID"],
+          PAPER_CODE: row["PAPER_CODE"],
+          WIDTH: row["WIDTH"],
+          ESTADO: row["ESTADO"],
+          COMPLETA: row["COMPLETA"],
+          "Date created": row["Date created"],
+        };
       });
-      if (Object.keys(colMap).length > 0) {
-        df = df.rename(colMap, { inplace: false });
+      if (dataWithDate.length > 0) {
+        dfs.push(new dfd.DataFrame(dataWithDate));
       }
-      df = df.loc({
-        columns: ["ROLL_ID", "PAPER_CODE", "WIDTH", "COMPLETA", "Date created"],
-      });
-
-      if (Object.keys(colMap).length > 0) {
-        df = df.rename(colMap, { inplace: false });
-      }
-      dfs.push(df);
     } catch (e) {
-      // Omitir archivos con error
-
       console.error(`Error leyendo archivo ${file.name}:`, e);
       continue;
     }
@@ -323,7 +325,15 @@ export async function getLastNDays(files, n = 20) {
   }
   if (dfs.length === 0) {
     return new dfd.DataFrame([], {
-  columns: ["ROLL_ID","PAPER_CODE","WIDTH","ESTADO","COMPLETA","Date created"],});
+      columns: [
+        "ROLL_ID",
+        "PAPER_CODE",
+        "WIDTH",
+        "ESTADO",
+        "COMPLETA",
+        "Date created",
+      ],
+    });
   }
   return dfd.concat({ dfList: dfs, axis: 0 });
 }
@@ -389,11 +399,12 @@ export function countItems(df) {
   // Filtrar primero por 'COMPLETA' == 'Saldo'
   let filtered = df;
 
-  const maskSaldo = filtered["COMPLETA"].values.map(v => String(v).trim().toLowerCase() === "saldo");
-  const maskTurno = filtered["Turno"].values.map(v => Number(v) === 1);
-  filtered = filtered.loc({ rows: maskSaldo.map((m,i) => m && maskTurno[i]) });
-  
-  
+  const maskSaldo = filtered["COMPLETA"].values.map(
+    (v) => String(v).trim().toLowerCase() === "saldo"
+  );
+  const maskTurno = filtered["Turno"].values.map((v) => Number(v) === 1);
+  filtered = filtered.loc({ rows: maskSaldo.map((m, i) => m && maskTurno[i]) });
+
   // Agrupar y contar
   if (filtered.shape[0] === 0) {
     return new dfd.DataFrame({ columns: ["PAPER_CODE", "WIDTH", "Cantidad"] });

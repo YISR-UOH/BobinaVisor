@@ -36,7 +36,6 @@ export function useCountItems(files) {
           return;
         }
         let df = await readDataFrame(turnFiles);
-
         if (!df || df.shape[0] === 0) {
           console.warn("[useCountItems] DataFrame vacío tras readDataFrame");
           setData(null);

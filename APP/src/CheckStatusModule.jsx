@@ -9,7 +9,6 @@ export default function CheckStatusModule({ files }) {
   if (error)
     return <div style={{ color: "red" }}>Error CheckStatus: {error}</div>;
   if (!data) return null;
-  console.log(data);
   return (
     <div style={{ marginTop: 20 }}>
       <b>Cambio de estado (turno actual, saldo):</b>

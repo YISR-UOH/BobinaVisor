@@ -9,12 +9,6 @@ export default function CountItemsModule({ files }) {
   // Evitar early-returns para mantener el orden de hooks estable.
   const columns = data?.columns ?? [];
   const rows = data?.rows ?? [];
-
-  // console.log sumando la 3ra columna
-  console.log("[CountItemsModule] Data rows:", {
-    rows,
-    countSum: rows.reduce((acc, row) => acc + (Number(row[2]) || 0), 0),
-  });
   // Obtener índices de columnas de interés de forma segura
   const { pIdx, wIdx, cIdx } = useMemo(() => {
     const pIdx = columns.indexOf("PAPER_CODE");
@@ -133,6 +127,7 @@ export default function CountItemsModule({ files }) {
 
                 {/* Desglose horizontal por WIDTH (máx 4 por fila) */}
                 <div className="grid grid-cols-4 gap-1.5">
+                  {/*mostrar solo los widths : [1930,2100,2250,2350,2450], los demas ocultos y se muestran al expandir el elemento*/}
                   {info.widths.map((w) => (
                     <div
                       key={`${paper}-${w.width}`}
