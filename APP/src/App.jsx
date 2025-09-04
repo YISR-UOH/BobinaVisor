@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CountItemsModule from "./CountItemsModule";
 import CheckStatusModule from "./CheckStatusModule";
 import SummaryTableModule from "./SummaryTableModule";
@@ -8,15 +8,19 @@ import { getAllData } from "./DataUtils";
 
 function App() {
   const [files, setFiles] = useState([]);
-  const [n, setN] = useState(20); // Número de archivos a mantener
+  const [n, setN] = useState(240);
+  const [days, setDays] = useState(20);
+  useEffect(() => {
+    if (n) {
+      setDays(Math.min(100, Math.max(1, Math.floor(n / 24))));
+    }
+  }, [n]);
 
   const handleFiles = async (fileArr) => {
-    // Ordenar por nombre descendente (YYYYMMDD-HHMMSS.csv)
     const sorted = fileArr
       .filter((f) => f.name.toLowerCase().endsWith(".csv"))
       .sort((a, b) => b.name.localeCompare(a.name));
     const limited = sorted.slice(0, n);
-    // Solo pasar los N archivos más recientes a getAllData
     const names = await getAllData(limited);
     const filtered = limited.filter((f) => names.includes(f.name));
     setFiles(filtered);
@@ -30,16 +34,15 @@ function App() {
         </h1>
         <div style={{ marginBottom: 8 }}>
           <label>
-            N archivos a mostrar:&nbsp;
+            N archivos a cargar:&nbsp;
             <input
               type="number"
-              min={1}
-              max={1000}
               value={n}
               onChange={(e) => setN(Number(e.target.value))}
               style={{ width: 60 }}
             />
           </label>
+          &nbsp; (aprox. {days} días)
         </div>
         <input
           directory=""
@@ -53,7 +56,7 @@ function App() {
         />
         {files.length > 0 && <CheckStatusModule files={files} />}
         {files.length > 0 && <CountItemsModule files={files} />}
-        {files.length > 0 && <SummaryTableModule files={files} />}
+        {files.length > 0 && <SummaryTableModule files={files} n={days} />}
       </div>
     </>
   );

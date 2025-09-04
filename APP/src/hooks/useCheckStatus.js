@@ -8,7 +8,7 @@ import {
 import * as dfd from "danfojs";
 
 /**
- * Custom hook para obtener el conteo de rollos por código y ancho (turno actual, saldo)
+ * Obtiene el conteo de rollos por código y ancho (turno actual, saldo)
  * @param {File[]} files
  * @returns {{ data: {columns: string[], rows: any[][]} | null, loading: boolean, error: string|null }}
  */

@@ -5,15 +5,16 @@ import "./style.css";
 export default function CountItemsModule({ files }) {
   const { data, loading, error } = useCountItems(files);
   const [query, setQuery] = useState("");
-
-  // Evitar early-returns para mantener el orden de hooks estable.
+  const [expanded, setExpanded] = useState(() => new Set());
+  const ALLOWED_WIDTHS = useMemo(
+    () => new Set(["1930", "2100", "2250", "2350", "2450"]),
+    []
+  );
   const columns = data?.columns ?? [];
   const rows = data?.rows ?? [];
-  // Obtener índices de columnas de interés de forma segura
   const { pIdx, wIdx, cIdx } = useMemo(() => {
     const pIdx = columns.indexOf("PAPER_CODE");
     const wIdx = columns.indexOf("WIDTH");
-    // Admitir variantes de nombre por seguridad
     const countCandidates = ["Cantidad", "COUNT", "count", "ROLL_ID_count"];
     let cIdx = -1;
     for (const k of countCandidates) {
@@ -25,8 +26,6 @@ export default function CountItemsModule({ files }) {
     }
     return { pIdx, wIdx, cIdx };
   }, [columns]);
-
-  // Estructura agrupada: Map(PAPER_CODE -> { total, widths: Array<{width, count}> })
   const grouped = useMemo(() => {
     const map = new Map();
     if (!rows.length || pIdx === -1 || wIdx === -1 || cIdx === -1) return map;
@@ -45,7 +44,6 @@ export default function CountItemsModule({ files }) {
       entry.total += count;
       entry.widths.set(width, (entry.widths.get(width) || 0) + count);
     }
-    // Convert nested maps to arrays, con orden por ancho numérico si aplica
     const normalized = new Map();
     for (const [paper, info] of map.entries()) {
       const widthsArr = Array.from(info.widths.entries()).map(([w, cnt]) => ({
@@ -62,19 +60,14 @@ export default function CountItemsModule({ files }) {
     }
     return normalized;
   }, [rows, pIdx, wIdx, cIdx]);
-
-  // Filtrar por búsqueda de PAPER_CODE (case-insensitive)
   const filteredPapers = useMemo(() => {
     const q = query.trim().toLowerCase();
     const all = Array.from(grouped.entries());
     const filtered = q
       ? all.filter(([paper]) => paper.toLowerCase().includes(q))
       : all;
-    // Orden alfabético por PAPER_CODE
     return filtered.sort((a, b) => a[0].localeCompare(b[0]));
   }, [grouped, query]);
-
-  // Suma total de items (Cantidad) de los PAPER_CODE filtrados
   const totalFiltered = useMemo(() => {
     return filteredPapers.reduce(
       (acc, [, info]) => acc + (info?.total || 0),
@@ -87,15 +80,12 @@ export default function CountItemsModule({ files }) {
       <h2 className="text-lg font-semibold text-slate-900">
         Conteo de rollos por código y ancho (turno actual, saldo)
       </h2>
-
-      {/* Estados */}
       {!files?.length ? null : loading ? (
         <div className="my-4 text-slate-700">Cargando conteo de rollos...</div>
       ) : error ? (
         <div className="my-4 text-red-600">Error countItems: {error}</div>
       ) : (
         <>
-          {/* Buscador por PAPER_CODE */}
           <div className="mt-3 flex items-center gap-3">
             <input
               type="text"
@@ -109,7 +99,7 @@ export default function CountItemsModule({ files }) {
             </span>
           </div>
 
-          {/* Grilla de tarjetas por PAPER_CODE */}
+          {/* TODO: lg:grid-cols-5 o lg:grid-cols-4 */}
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {filteredPapers.map(([paper, info]) => (
               <article
@@ -124,11 +114,13 @@ export default function CountItemsModule({ files }) {
                     Total: {info.total}
                   </span>
                 </header>
-
-                {/* Desglose horizontal por WIDTH (máx 4 por fila) */}
-                <div className="grid grid-cols-4 gap-1.5">
-                  {/*mostrar solo los widths : [1930,2100,2250,2350,2450], los demas ocultos y se muestran al expandir el elemento*/}
-                  {info.widths.map((w) => (
+                <div className="grid grid-cols-5 gap-1.5">
+                  {(expanded.has(paper)
+                    ? info.widths
+                    : info.widths.filter((w) =>
+                        ALLOWED_WIDTHS.has(String(w.width))
+                      )
+                  ).map((w) => (
                     <div
                       key={`${paper}-${w.width}`}
                       className="inline-flex items-center gap-1.5 rounded-md bg-sky-50 px-2 py-1 text-sky-900 ring-1 ring-inset ring-sky-200"
@@ -141,6 +133,32 @@ export default function CountItemsModule({ files }) {
                     </div>
                   ))}
                 </div>
+                {info.widths.some(
+                  (w) => !ALLOWED_WIDTHS.has(String(w.width))
+                ) && (
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(paper)) next.delete(paper);
+                          else next.add(paper);
+                          return next;
+                        })
+                      }
+                      className="text-[11px] font-medium text-sky-700 hover:text-sky-900"
+                    >
+                      {expanded.has(paper)
+                        ? "Ver menos"
+                        : `Ver todos (+${
+                            info.widths.filter(
+                              (w) => !ALLOWED_WIDTHS.has(String(w.width))
+                            ).length
+                          })`}
+                    </button>
+                  </div>
+                )}
               </article>
             ))}
           </div>
