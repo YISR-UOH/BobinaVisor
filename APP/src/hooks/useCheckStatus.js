@@ -5,7 +5,6 @@ import {
   addTurn,
   checkChangeStatus,
 } from "../DataUtils";
-import * as dfd from "danfojs";
 
 /**
  * Obtiene el conteo de rollos por código y ancho (turno actual, saldo)
