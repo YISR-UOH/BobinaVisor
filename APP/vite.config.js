@@ -12,28 +12,36 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024, // 10 MiB
+        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
+      },
+      includeAssets: [
+        "favicon.ico",
+        "apple-touch-icon-180x180.png",
+        "logo.png",
+      ],
+      manifest: {
+        name: "BobinaVisor",
+        short_name: "BobinaVisor",
+        description: "App para revisar el estado de las bobinas",
+        start_url: "/BobinaVisor/",
+        scope: "/BobinaVisor/",
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#2563eb",
+        icons: [
+          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
+          {
+            src: "maskable-icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
       },
     }),
   ],
   build: {
     chunkSizeWarningLimit: 5 * 1024 * 1024,
-  },
-  manifest: {
-    name: "BobinaVisor",
-    short_name: "BobinaVisor",
-    start_url: "/",
-    description: "App para revisar el estado de las bobinas",
-    theme_color: "#000000ff",
-    includeAssets: [
-      "public/favicon.svg",
-      "public/favicon.ico",
-      "public/apple-touch-icon.png",
-    ],
-
-    icons: [
-      { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
-      { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
-    ],
   },
 });

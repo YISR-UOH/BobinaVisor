@@ -1,19 +1,20 @@
 {
   "name": "BobinaVisor",
   "short_name": "BobinaVisor",
-  "description": "App para revisar el estado de las bobinas.",
-  "start_url": "/",
+  "description": "App para revisar el estado de las bobinas",
+  "start_url": "/BobinaVisor/",
+  "scope": "/BobinaVisor/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
-  "includeAssets": [
-    "public/favicon.svg",
-    "public/favicon.ico",
-    "public/apple-touch-icon.png"
-  ],
-
   "icons": [
     { "src": "pwa-192x192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "pwa-512x512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "pwa-512x512.png", "sizes": "512x512", "type": "image/png" },
+    {
+      "src": "maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
