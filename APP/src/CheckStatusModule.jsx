@@ -64,13 +64,13 @@ export default function CheckStatusModule({ files }) {
           </div>
           <div className="mt-1 grid grid-cols-2 gap-2 text-sm">
             <div className="rounded-md bg-sky-50 px-2 py-1 text-sky-900 ring-1 ring-inset ring-sky-200">
-              <span className="block text-[11px] font-medium">Item 1</span>
+              <span className="block text-[11px] font-medium">Generacion</span>
               <span className="text-base font-semibold">
                 {Number(data.rows?.[0]?.[0] * data.rows?.[0]?.[1] || 0)}
               </span>
             </div>
             <div className="rounded-md bg-sky-50 px-2 py-1 text-sky-900 ring-1 ring-inset ring-sky-200">
-              <span className="block text-[11px] font-medium">Item 2</span>
+              <span className="block text-[11px] font-medium">Consumo</span>
               <span className="text-base font-semibold">
                 {Number(data.rows?.[1]?.[0] * data.rows?.[1]?.[1] || 0)}
               </span>
