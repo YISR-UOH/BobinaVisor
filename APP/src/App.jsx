@@ -70,9 +70,6 @@ function App() {
     if (state.files && Array.isArray(state.files) && state.files.length > 0) {
       setFiles(state.files);
     }
-    if (state.path && state.path !== path) {
-      setPath(state.path.split("/")[0] + "/" || "");
-    }
   }, []);
 
   const handleFiles = async (fileArr) => {
