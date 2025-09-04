@@ -100,7 +100,7 @@ export default function CountItemsModule({ files }) {
           </div>
 
           {/* TODO: lg:grid-cols-5 o lg:grid-cols-4 */}
-          <div className="m-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {filteredPapers.map(([paper, info]) => (
               <article
                 key={paper}

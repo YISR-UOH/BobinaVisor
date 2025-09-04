@@ -17,11 +17,14 @@ import {
 export default function SummaryTableModule({ files, n = 20 }) {
   const { data, loading, error } = useSummaryData(files, n);
 
-  if (loading) return <div>Cargando resumen...</div>;
+  if (loading)
+    return <div className="my-4 text-slate-700">Cargando resumen...</div>;
   if (error)
-    return <div style={{ color: "red" }}>Error SummaryTable: {error}</div>;
+    return <div className="my-4 text-red-600">Error SummaryTable: {error}</div>;
   if (!data || !data.rows || data.rows.length === 0)
-    return <div>No hay datos para mostrar.</div>;
+    return (
+      <div className="my-4 text-slate-600">No hay datos para mostrar.</div>
+    );
 
   // Transformar data.rows -> [{ date, Saldo, Completa } ...]
   const dateIdx = data.columns.indexOf("Date created");
@@ -43,9 +46,11 @@ export default function SummaryTableModule({ files, n = 20 }) {
     a.date.localeCompare(b.date)
   );
   return (
-    <div style={{ overflowX: "auto", margin: "1em 0" }}>
-      <h3>Resumen por fecha y estado</h3>
-      <div style={{ width: "100%", height: 320, marginBottom: "0.75rem" }}>
+    <div className="my-4 overflow-x-auto">
+      <h3 className="text-lg font-semibold text-slate-900">
+        Resumen por fecha y estado
+      </h3>
+      <div className="mb-3 h-80 w-full">
         <ResponsiveContainer>
           <LineChart
             data={chartData}
@@ -104,24 +109,13 @@ export default function SummaryTableModule({ files, n = 20 }) {
         </ResponsiveContainer>
       </div>
 
-      <table
-        style={{
-          borderCollapse: "collapse",
-          width: "100%",
-          fontSize: "12px",
-        }}
-      >
+      <table className="w-full border-collapse text-[12px]">
         <thead>
           <tr>
             {data.columns.map((col) => (
               <th
                 key={col}
-                style={{
-                  border: "1px solid #ddd",
-                  padding: "0.25em 0.4em",
-                  background: "#f8f8f8",
-                  fontWeight: 600,
-                }}
+                className="border border-slate-200 bg-slate-50 px-2 py-1 text-left font-semibold text-slate-900"
               >
                 {col}
               </th>
@@ -134,12 +128,7 @@ export default function SummaryTableModule({ files, n = 20 }) {
               {row.map((cell, j) => (
                 <td
                   key={j}
-                  style={{
-                    border: "1px solid #eee",
-                    padding: "0.2em 0.35em",
-                    textAlign: "center",
-                    whiteSpace: "nowrap",
-                  }}
+                  className="whitespace-nowrap border border-slate-100 px-2 py-1 text-center"
                 >
                   {cell}
                 </td>
