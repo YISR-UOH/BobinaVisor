@@ -22,7 +22,6 @@ export default function SummaryTableModule({ files, n = 20 }) {
     return <div style={{ color: "red" }}>Error SummaryTable: {error}</div>;
   if (!data || !data.rows || data.rows.length === 0)
     return <div>No hay datos para mostrar.</div>;
-  console.log("SummaryTable data:", data);
 
   // Transformar data.rows -> [{ date, Saldo, Completa } ...]
   const dateIdx = data.columns.indexOf("Date created");
