@@ -143,12 +143,8 @@ function App() {
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
           <div className="mx-auto max-w-6xl px-4 py-3">
             <h1 className="text-xl font-semibold text-slate-900">
-              Resumen de Inventario
+              Resumen de Inventario de bobinas.
             </h1>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Procesa tus CSVs y obtiene un panorama por códigos, anchos y
-              estados.
-            </p>
           </div>
         </header>
         <div className=" max-w-full px-2 py-2">
