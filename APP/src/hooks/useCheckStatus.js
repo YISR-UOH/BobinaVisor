@@ -31,11 +31,11 @@ export function useCheckStatus(files) {
         const second = timePart.slice(4, 6);
         let turno = "";
         if (hour >= 21 || hour < 6) {
-          turno = "Mañana";
-        } else if (hour >= 6 && hour < 13) {
-          turno = "Tarde";
-        } else if (hour >= 13 && hour < 21) {
           turno = "Noche";
+        } else if (hour >= 6 && hour < 13) {
+          turno = "Mañana";
+        } else if (hour >= 13 && hour < 21) {
+          turno = "Tarde";
         }
 
         const date = new Date(
