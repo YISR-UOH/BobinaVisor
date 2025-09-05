@@ -17,40 +17,29 @@ export function useCheckStatus(files) {
   const [error, setError] = useState(null);
   const [turnInfo, setTurnInfo] = useState("");
 
-  const updateTurnInfo = async (nameFile) => {
-    const nameParts = nameFile.name.split(".")[0].split("-");
-    if (nameParts.length === 2) {
-      const datePart = nameParts[0];
-      const timePart = nameParts[1];
-      if (datePart.length === 8 && timePart.length === 6) {
-        const year = datePart.slice(0, 4);
-        const month = datePart.slice(4, 6);
-        const day = datePart.slice(6, 8);
-        const hour = parseInt(timePart.slice(0, 2), 10);
-        const minute = timePart.slice(2, 4);
-        const second = timePart.slice(4, 6);
-        let turno = "";
-        if (hour >= 21 || hour < 6) {
-          turno = "Noche";
-        } else if (hour >= 6 && hour < 13) {
-          turno = "Mañana";
-        } else if (hour >= 13 && hour < 21) {
-          turno = "Tarde";
-        }
-
-        const date = new Date(
-          `${year}-${month}-${day}T${String(hour).padStart(
-            2,
-            "0"
-          )}:${minute}:${second}`
-        );
-        return { turno, date };
-      } else {
-        return null;
-      }
-    } else {
-      return null;
+  // Fri Sep 05 2025 08:15:50 GMT-0400 (hora estándar de Chile)
+  const updateTurnInfo = async (file) => {
+    // Usa lastModifiedDate para determinar turno y fecha
+    const lastModified = file.lastModifiedDate || file.lastModified;
+    if (!lastModified) return null;
+    const dateObj = new Date(lastModified);
+    if (isNaN(dateObj.getTime())) return null;
+    const hour = dateObj.getHours();
+    let turno = "";
+    if (hour >= 21 || hour < 6) {
+      turno = "Noche";
+    } else if (hour >= 6 && hour < 13) {
+      turno = "Mañana";
+    } else if (hour >= 13 && hour < 21) {
+      turno = "Tarde";
     }
+    // Formato: dd/mm/yyyy hh:mm
+    const date = `${String(dateObj.getDate()).padStart(2, "0")}/${String(
+      dateObj.getMonth() + 1
+    ).padStart(2, "0")}/${dateObj.getFullYear()} ${String(
+      dateObj.getHours()
+    ).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
+    return { turno, date };
   };
 
   useEffect(() => {

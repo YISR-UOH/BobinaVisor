@@ -74,6 +74,7 @@ export default function CheckStatusModule({ files, setActualTurn }) {
             {turnInfo.previousDate
               ? turnInfo.previousDate.toLocaleString()
               : null}
+            {turnInfo?.previousName ? ` (${turnInfo.previousName})` : null}
           </div>
           <div className="mt-1 grid grid-cols-2 gap-2 text-sm">
             <div className="rounded-md bg-sky-50 px-2 py-1 text-sky-900 ring-1 ring-inset ring-sky-200">
