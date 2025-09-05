@@ -78,7 +78,8 @@ export async function verifyPermission(handle, readWrite = false) {
   }
 }
 
-export async function readCsvFilesFromDirectory(dirHandle) {
+export async function readCsvFilesFromDirectory(dirHandle, options = {}) {
+  const { max, sortBy = "name", order = "desc" } = options;
   const files = [];
   async function recurseDirectory(handle) {
     for await (const [name, entry] of handle.entries()) {
@@ -97,5 +98,29 @@ export async function readCsvFilesFromDirectory(dirHandle) {
     }
   }
   await recurseDirectory(dirHandle);
-  return files;
+  // Optional sort and limit
+  let result = files;
+  try {
+    if (sortBy === "lastModified") {
+      result = result.sort((a, b) =>
+        order === "asc"
+          ? a.lastModified - b.lastModified
+          : b.lastModified - a.lastModified
+      );
+    } else {
+      // Default: sort by name
+      result = result.sort((a, b) =>
+        order === "asc"
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name)
+      );
+    }
+    if (typeof max === "number" && max > 0) {
+      result = result.slice(0, max);
+    }
+  } catch (e) {
+    // Fallback to unsorted/full list if something goes wrong
+    console.warn("No se pudo ordenar/limitar la lista de archivos", e);
+  }
+  return result;
 }

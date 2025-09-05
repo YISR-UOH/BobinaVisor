@@ -18,6 +18,8 @@ function App() {
   const [n, setN] = useState(240);
   const [path, setPath] = useState("");
   const fileInputRef = useRef(null);
+  const [totalItems, setTotalItems] = useState(0);
+  const [actualTurn, setActualTurn] = useState(null);
   const state = { files: null, n: null, path: null };
   try {
     const saved_files = localStorage.getItem("bobinavisor:filesMeta");
@@ -95,12 +97,12 @@ function App() {
   }, []);
 
   const handleFiles = async (fileArr) => {
-    const sorted = fileArr
-      .filter((f) => f.name.toLowerCase().endsWith(".csv"))
-      .sort((a, b) => b.name.localeCompare(a.name));
-    const limited = sorted.slice(0, n);
-    const names = await getAllData(limited);
-    const filtered = limited.filter((f) => names.includes(f.name));
+    // Filtrar a CSV en un solo lugar para ambos flujos
+    const csvOnly = fileArr.filter((f) =>
+      f.name.toLowerCase().endsWith(".csv")
+    );
+    const names = await getAllData(csvOnly);
+    const filtered = csvOnly.filter((f) => names.includes(f.name));
     setFiles(filtered);
   };
 
@@ -111,7 +113,11 @@ function App() {
       if (!handle) return;
       const hasPerm = await verifyPermission(handle, false);
       if (!hasPerm) return;
-      const allFiles = await readCsvFilesFromDirectory(handle);
+      const allFiles = await readCsvFilesFromDirectory(handle, {
+        max: n,
+        sortBy: "lastModified",
+        order: "desc",
+      });
       if (allFiles.length > 0) {
         const any = allFiles[0];
         setPath(handle.name || "");
@@ -174,7 +180,8 @@ function App() {
                       await saveDirectoryHandle(dirHandle);
                       setPath(dirHandle.name || "");
                       const allFiles = await readCsvFilesFromDirectory(
-                        dirHandle
+                        dirHandle,
+                        { max: n, sortBy: "lastModified", order: "desc" }
                       );
                       await handleFiles(allFiles);
                     } catch (e) {
@@ -202,12 +209,19 @@ function App() {
                     type="file"
                     multiple
                     onChange={async (e) => {
-                      const fileArr = Array.from(e.target.files);
+                      let fileArr = Array.from(e.target.files);
                       const rel = fileArr[0]?.webkitRelativePath || "";
                       if (rel) {
                         const root = rel.split("/")[0] || "";
                         setPath(root);
                       }
+                      fileArr = fileArr
+                        .sort((a, b) => {
+                          const d =
+                            (b.lastModified || 0) - (a.lastModified || 0);
+                          return d !== 0 ? d : b.name.localeCompare(a.name);
+                        })
+                        .slice(0, n);
                       await handleFiles(fileArr);
                     }}
                     id="fileUpload"
@@ -221,7 +235,6 @@ function App() {
                   if (isFsSupported()) {
                     await scanFromSavedDirectory();
                   } else {
-                    // Reabrir el selector como "refresh" manual
                     if (fileInputRef.current) fileInputRef.current.click();
                   }
                 }}
@@ -237,8 +250,46 @@ function App() {
             </div>
           )}
           <div className="mt-4">
-            {files.length > 0 && <CheckStatusModule files={files} />}
-            {files.length > 0 && <CountItemsModule files={files} />}
+            <div className="flex flex-wrap items-stretch gap-3">
+              {files.length > 0 && (
+                <div className="w-full sm:w-80 flex-none h-full">
+                  <CheckStatusModule
+                    files={files}
+                    setActualTurn={setActualTurn}
+                  />
+                </div>
+              )}
+              {totalItems > 0 && actualTurn && (
+                <article className="w-full sm:w-80 flex-none h-full rounded-md border border-slate-200 bg-white p-2 shadow-sm flex flex-col">
+                  <div className="mt-1 flex justify-end">
+                    <span className="inline-flex items-center rounded-full text-[10px] font-medium px-1 bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200">
+                      Total de Saldos
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Turno Actual: {actualTurn?.turno || "N/A"}
+                  </h2>
+                  <div className="text-sm text-slate-400">
+                    {actualTurn?.date ? actualTurn.date.toLocaleString() : null}
+                    {actualTurn?.name ? ` (${actualTurn.name})` : null}
+                  </div>
+                  <div className="items-center justify-center mt-1">
+                    <div className="w-full rounded-md px-3 py-2 text-center bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200">
+                      <div className="text-[11px] font-medium uppercase tracking-wide">
+                        Total
+                      </div>
+                      <div className="mt-1 text-4xl font-extrabold tabular-nums">
+                        {totalItems || 0}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              )}
+            </div>
+
+            {files.length > 0 && (
+              <CountItemsModule files={files} setTotalItems={setTotalItems} />
+            )}
             {files.length > 0 && (
               <SummaryTableModule
                 files={files}

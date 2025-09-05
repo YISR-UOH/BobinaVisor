@@ -2,8 +2,8 @@ import { useCheckStatus } from "./hooks/useCheckStatus";
 import { useEffect, useMemo, useState } from "react";
 import "./style.css";
 
-export default function CheckStatusModule({ files }) {
-  const { data, loading, error } = useCheckStatus(files);
+export default function CheckStatusModule({ files, setActualTurn }) {
+  const { data, loading, error, turnInfo } = useCheckStatus(files);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
@@ -17,6 +17,13 @@ export default function CheckStatusModule({ files }) {
       setTotal(0);
     }
   }, [data]);
+  useEffect(() => {
+    if (turnInfo) {
+      setActualTurn(turnInfo);
+    } else {
+      setActualTurn(null);
+    }
+  }, [turnInfo, setActualTurn]);
 
   const badgeClasses = useMemo(() => {
     if (total > 0)
@@ -46,21 +53,27 @@ export default function CheckStatusModule({ files }) {
   const hasRows = data?.rows?.length > 0;
 
   return (
-    <section className="my-6">
-      <h2 className="text-lg font-semibold text-slate-900">Saldo generado</h2>
-
+    <section className="w-full h-full flex">
       {!hasRows ? (
         <div className="mt-3 text-slate-600">
           No hay datos de cambios disponibles.
         </div>
       ) : (
-        <article className="mt-2 w-full max-w-xs rounded-md border border-slate-200 bg-white p-2 shadow-sm flex flex-col">
-          <div className="mt-2 flex justify-end">
+        <article className="w-full h-full rounded-md border border-slate-200 bg-white p-2 shadow-sm flex flex-col">
+          <div className="mt-1 flex justify-end">
             <span
-              className={`inline-flex items-center rounded-full text-[10px] font-medium ${badgeClasses}`}
+              className={`inline-flex items-center rounded-full text-[10px] font-medium px-1 ${badgeClasses}`}
             >
-              Saldo
+              Diferencia de Saldo
             </span>
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Turno Anterior: {turnInfo.previousTurno || "N/A"}
+          </h2>
+          <div className="text-sm text-slate-400">
+            {turnInfo.previousDate
+              ? turnInfo.previousDate.toLocaleString()
+              : null}
           </div>
           <div className="mt-1 grid grid-cols-2 gap-2 text-sm">
             <div className="rounded-md bg-sky-50 px-2 py-1 text-sky-900 ring-1 ring-inset ring-sky-200">

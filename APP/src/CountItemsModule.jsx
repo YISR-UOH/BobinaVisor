@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useCountItems } from "./hooks/useCountItems";
 import "./style.css";
 
-export default function CountItemsModule({ files }) {
+export default function CountItemsModule({ files, setTotalItems }) {
   const { data, loading, error } = useCountItems(files);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(() => new Set());
@@ -74,6 +74,13 @@ export default function CountItemsModule({ files }) {
       0
     );
   }, [filteredPapers]);
+  useEffect(() => {
+    if (setTotalItems) {
+      setTotalItems(
+        Array.from(grouped.values()).reduce((acc, info) => acc + info.total, 0)
+      );
+    }
+  }, [grouped, setTotalItems]);
 
   return (
     <section className="my-6">

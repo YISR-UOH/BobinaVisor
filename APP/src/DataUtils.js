@@ -9,7 +9,7 @@ export function countItemsbyDate(df) {
   let dateVals = df["Date created"].values.map((d) => {
     const dt = d instanceof Date ? d : new Date(d);
     // Solo la parte de la fecha (YYYY-MM-DD)
-    return dt.toISOString().slice(0, 10);
+    return formatLocalDay(dt);
   });
   let completaVals = df["COMPLETA"].values.map((v) => String(v));
   // Crear DataFrame auxiliar para agrupar
@@ -27,38 +27,54 @@ export function countItemsbyDate(df) {
  * @returns {dfd.DataFrame} DataFrame con columnas 'Cambio Completa' y 'Cantidad'
  */
 export function checkChangeStatus(df) {
-  // Crear copias filtradas por turno y con índice ROLL_ID
-  const df_turno_1 = df
-    .query(df["Turno"].eq(1))
-    .setIndex({ column: "ROLL_ID", drop: false });
-  const df_turno_0 = df
-    .query(df["Turno"].eq(0))
-    .setIndex({ column: "ROLL_ID", drop: false });
+  if (!df || df.shape[0] === 0) {
+    return new dfd.DataFrame({ "Cambio Completa": [1, -1], Cantidad: [0, 0] });
+  }
+  // Validación de columnas requeridas
+  const required = ["ROLL_ID", "Turno", "COMPLETA"];
+  for (const col of required) {
+    if (!df.columns.includes(col)) {
+      console.warn(`[checkChangeStatus] Falta columna '${col}'`);
+      return new dfd.DataFrame({
+        "Cambio Completa": [1, -1],
+        Cantidad: [0, 0],
+      });
+    }
+  }
 
   // Inicializar columna 'Cambio Completa' en 0
   let cambioCompleta = Array(df.shape[0]).fill(0);
-  const rollIds_1 = df_turno_1.index;
-  const rollIds_0 = df_turno_0.index;
 
-  // Mapas para acceso rápido
-  const idxMap = {};
+  // Mapas por turno para acceso rápido sin setIndex (evita errores cuando hay DF vacío)
+  const completaByTurn1 = new Map(); // ROLL_ID -> COMPLETA
+  const completaByTurn0 = new Map(); // ROLL_ID -> COMPLETA
+  const idxMap = {}; // `${ROLL_ID}_${Turno}` -> índice original
   for (let i = 0; i < df.shape[0]; i++) {
     const rid = df.at(i, "ROLL_ID");
-    const turno = df.at(i, "Turno");
+    const turno = Number(df.at(i, "Turno"));
+    const completa = df.at(i, "COMPLETA");
     idxMap[`${rid}_${turno}`] = i;
+    if (turno === 1) {
+      completaByTurn1.set(rid, completa);
+    } else if (turno === 0) {
+      completaByTurn0.set(rid, completa);
+    }
   }
+
+  const rollIds_1 = Array.from(completaByTurn1.keys());
+  const rollIds_0 = Array.from(completaByTurn0.keys());
 
   // Para cada roll_id en turno 1
   for (let i = 0; i < rollIds_1.length; i++) {
     const roll_id = rollIds_1[i];
-    const completa_1 = df_turno_1.at(roll_id, "COMPLETA");
-    if (!rollIds_0.includes(roll_id)) {
+    const completa_1 = completaByTurn1.get(roll_id);
+    if (!completaByTurn0.has(roll_id)) {
       if (completa_1 === "Saldo") {
         const idx = idxMap[`${roll_id}_1`];
         cambioCompleta[idx] = 1;
       }
     } else {
-      const completa_0 = df_turno_0.at(roll_id, "COMPLETA");
+      const completa_0 = completaByTurn0.get(roll_id);
       if (completa_1 === "Saldo" && completa_0 === "Completa") {
         const idx = idxMap[`${roll_id}_1`];
         cambioCompleta[idx] = 1;
@@ -69,8 +85,8 @@ export function checkChangeStatus(df) {
   // Para cada roll_id en turno 0
   for (let i = 0; i < rollIds_0.length; i++) {
     const roll_id = rollIds_0[i];
-    if (!rollIds_1.includes(roll_id)) {
-      const completa_0 = df_turno_0.at(roll_id, "COMPLETA");
+    if (!completaByTurn1.has(roll_id)) {
+      const completa_0 = completaByTurn0.get(roll_id);
       if (completa_0 === "Saldo") {
         const idx = idxMap[`${roll_id}_0`];
         cambioCompleta[idx] = -1;
@@ -78,18 +94,28 @@ export function checkChangeStatus(df) {
     }
   }
 
-  // Agregar columna al DataFrame
-  df = df.copy();
-  df.addColumn("Cambio Completa", cambioCompleta, { inplace: true });
-
-  // Filtrar y agrupar
-  let filtered = df.query(df["Cambio Completa"].ne(0));
-  if (filtered.shape[0] === 0) {
-    return new dfd.DataFrame({ "Cambio Completa": [], Cantidad: [] });
+  // Calcular conteos directamente desde el array (evita groupby/query con DF vacío)
+  let pos = 0;
+  let neg = 0;
+  for (let i = 0; i < cambioCompleta.length; i++) {
+    const v = cambioCompleta[i];
+    if (v === 1) pos++;
+    else if (v === -1) neg++;
   }
-  const grouped = filtered.groupby(["Cambio Completa"]);
-  const counted = grouped.col(["Cambio Completa"]).count();
-  return counted.rename({ "Cambio Completa_count": "Cantidad" });
+  const keys = [];
+  const vals = [];
+  if (pos > 0) {
+    keys.push(1);
+    vals.push(pos);
+  }
+  if (neg > 0) {
+    keys.push(-1);
+    vals.push(neg);
+  }
+  if (keys.length === 0) {
+    return new dfd.DataFrame({ "Cambio Completa": [1, -1], Cantidad: [0, 0] });
+  }
+  return new dfd.DataFrame({ "Cambio Completa": keys, Cantidad: vals });
 }
 /**
  * Devuelve un DataFrame con los turnos etiquetados usando los archivos seleccionados (turno actual y anterior).
@@ -131,7 +157,7 @@ export async function getAllData(files) {
         file: f,
         name: f.name,
         date: dt,
-        day: dt.toISOString().slice(0, 10),
+        day: formatLocalDay(dt),
       };
     });
   // Agrupar por día y obtener el archivo más reciente de cada día
@@ -164,6 +190,14 @@ function parseDateTimeFromFilename(name) {
   return new Date(year, month, day, hour, min, sec);
 }
 
+// Formatea una fecha a YYYY-MM-DD en hora local (evita desplazamientos por UTC)
+function formatLocalDay(dt) {
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const d = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 /**
  * Obtiene los archivos correspondientes al turno actual y anterior.
  * @param {File[]} files
@@ -180,7 +214,7 @@ export async function getTurns(files) {
         file: f,
         name: f.name,
         date: dt,
-        day: dt.toISOString().slice(0, 10),
+        day: formatLocalDay(dt),
         hour: dt.getHours(),
       };
     })
@@ -195,7 +229,7 @@ export async function getTurns(files) {
   } else if (actual.hour <= 6) {
     const prevDay = new Date(actual.date);
     prevDay.setDate(prevDay.getDate() - 1);
-    const prevDayStr = prevDay.toISOString().slice(0, 10);
+    const prevDayStr = formatLocalDay(prevDay);
     turnoAnterior = fileInfos.find((f) => f.day === prevDayStr && f.hour < 21);
   } else if (actual.hour < 13) {
     turnoAnterior = fileInfos.find((f) => f.day === actual.day && f.hour < 6);
@@ -279,7 +313,6 @@ export async function readDataFrame(files) {
  * @returns {Promise<dfd.DataFrame>}
  */
 export async function getLastNDays(files, n = 20) {
-  // Obtener los nombres de los archivos más recientes (uno por día)
   const allData = await getAllData(files);
   const selectedNames = allData.slice(0, n);
   const selectedFiles = files.filter((f) => selectedNames.includes(f.name));
@@ -289,14 +322,12 @@ export async function getLastNDays(files, n = 20) {
       const text = await file.text();
       const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
       if (!parsed.data || parsed.data.length === 0) continue;
-      // Agregar columna de fecha desde el nombre del archivo
       const [dateStr] = file.name.split(".");
       const dateCreated = parseDateTimeFromFilename(dateStr);
       let dataWithDate = parsed.data.map((row) => ({
         ...row,
         "Date created": dateCreated,
       }));
-      // Filtrar según reglas de negocio
       dataWithDate = dataWithDate.filter(
         (row) =>
           row["LOCATION"] !== "ULOG" &&
@@ -304,7 +335,7 @@ export async function getLastNDays(files, n = 20) {
           row["ESTADO"] === "STOCK" &&
           row["DEPO"] === "Planta SFM"
       );
-      // Seleccionar columnas
+
       dataWithDate = dataWithDate.map((row) => {
         return {
           ROLL_ID: row["ROLL_ID"],
