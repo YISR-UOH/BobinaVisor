@@ -9,7 +9,7 @@ import {
 /**
  * Obtiene el conteo de rollos por código y ancho (turno actual, saldo)
  * @param {File[]} files
- * @returns {{ data: {columns: string[], rows: any[][]} | null, loading: boolean, error: string|null }}
+ * @returns []
  */
 export function useCheckStatus(files) {
   const [data, setData] = useState(null);
@@ -17,9 +17,7 @@ export function useCheckStatus(files) {
   const [error, setError] = useState(null);
   const [turnInfo, setTurnInfo] = useState("");
 
-  // Fri Sep 05 2025 08:15:50 GMT-0400 (hora estándar de Chile)
   const updateTurnInfo = async (file) => {
-    // Usa lastModifiedDate para determinar turno y fecha
     const lastModified = file.lastModifiedDate || file.lastModified;
     if (!lastModified) return null;
     const dateObj = new Date(lastModified);
@@ -33,7 +31,6 @@ export function useCheckStatus(files) {
     } else if (hour >= 13 && hour < 21) {
       turno = "Tarde";
     }
-    // Formato: dd/mm/yyyy hh:mm
     const date = `${String(dateObj.getDate()).padStart(2, "0")}/${String(
       dateObj.getMonth() + 1
     ).padStart(2, "0")}/${dateObj.getFullYear()} ${String(
@@ -65,7 +62,7 @@ export function useCheckStatus(files) {
           setLoading(false);
           return;
         }
-        // guardar la info de ambos archivos de turno
+
         const turnInfo1 = await updateTurnInfo(turnFiles[0]);
         const turnInfo2 =
           turnFiles.length > 1 ? await updateTurnInfo(turnFiles[1]) : null;
@@ -77,6 +74,7 @@ export function useCheckStatus(files) {
           previousDate: turnInfo2 ? turnInfo2.date : null,
           previousName: turnFiles.length > 1 ? turnFiles[1].name : "",
         });
+
         let df = await readDataFrame(turnFiles);
 
         if (!df || df.shape[0] === 0) {
@@ -87,13 +85,8 @@ export function useCheckStatus(files) {
         }
         df = addTurn(df);
         const countDf = checkChangeStatus(df);
-        if (!countDf || countDf.shape[0] === 0) {
-          console.warn("[useCountItems] countItems vacío");
-          setData(null);
-          setLoading(false);
-          return;
-        }
-        setData({ columns: countDf.columns, rows: countDf.values });
+
+        setData(countDf);
         setLoading(false);
       } catch (err) {
         setError(err.message + " " + err.stack);

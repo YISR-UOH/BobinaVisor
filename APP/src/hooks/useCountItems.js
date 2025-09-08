@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getTurns, readDataFrame, addTurn, countItems } from "../DataUtils";
+import { getTurns, getQuickData } from "../DataUtils";
 
 /**
  * Obtiene el conteo de rollos por código y ancho (turno actual, saldo)
@@ -34,15 +34,7 @@ export function useCountItems(files) {
           setLoading(false);
           return;
         }
-        let df = await readDataFrame(turnFiles);
-        if (!df || df.shape[0] === 0) {
-          console.warn("[useCountItems] DataFrame vacío tras readDataFrame");
-          setData(null);
-          setLoading(false);
-          return;
-        }
-        df = addTurn(df);
-        const countDf = countItems(df);
+        const countDf = await getQuickData(turnFiles[0]);
         if (!countDf || countDf.shape[0] === 0) {
           console.warn("[useCountItems] countItems vacío");
           setData(null);

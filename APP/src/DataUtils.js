@@ -1,3 +1,6 @@
+import * as dfd from "danfojs";
+import Papa from "papaparse";
+
 /**
  * Cuenta la cantidad de rollos por fecha y estado 'COMPLETA'.
  * Agrupa por fecha (solo día) y 'COMPLETA'.
@@ -24,7 +27,7 @@ export function countItemsbyDate(df) {
 /**
  * Marca los cambios de estado 'COMPLETA' entre turnos, similar a checkChangeStatus de Python.
  * @param {dfd.DataFrame} df
- * @returns {dfd.DataFrame} DataFrame con columnas 'Cambio Completa' y 'Cantidad'
+ * @returns {number[]} [generados, consumidos]
  */
 export function checkChangeStatus(df) {
   if (!df || df.shape[0] === 0) {
@@ -63,7 +66,8 @@ export function checkChangeStatus(df) {
 
   const rollIds_1 = Array.from(completaByTurn1.keys());
   const rollIds_0 = Array.from(completaByTurn0.keys());
-
+  let g = 0;
+  let c = 0;
   // Para cada roll_id en turno 1
   for (let i = 0; i < rollIds_1.length; i++) {
     const roll_id = rollIds_1[i];
@@ -71,13 +75,13 @@ export function checkChangeStatus(df) {
     if (!completaByTurn0.has(roll_id)) {
       if (completa_1 === "Saldo") {
         const idx = idxMap[`${roll_id}_1`];
-        cambioCompleta[idx] = 1;
+        g = g + 1;
       }
     } else {
       const completa_0 = completaByTurn0.get(roll_id);
       if (completa_1 === "Saldo" && completa_0 === "Completa") {
         const idx = idxMap[`${roll_id}_1`];
-        cambioCompleta[idx] = 1;
+        g = g + 1;
       }
     }
   }
@@ -89,34 +93,14 @@ export function checkChangeStatus(df) {
       const completa_0 = completaByTurn0.get(roll_id);
       if (completa_0 === "Saldo") {
         const idx = idxMap[`${roll_id}_0`];
-        cambioCompleta[idx] = -1;
+        c = c - 1;
       }
     }
   }
 
-  // Calcular conteos directamente desde el array (evita groupby/query con DF vacío)
-  let pos = 0;
-  let neg = 0;
-  for (let i = 0; i < cambioCompleta.length; i++) {
-    const v = cambioCompleta[i];
-    if (v === 1) pos++;
-    else if (v === -1) neg++;
-  }
-  const keys = [];
-  const vals = [];
-  if (pos > 0) {
-    keys.push(1);
-    vals.push(pos);
-  }
-  if (neg > 0) {
-    keys.push(-1);
-    vals.push(neg);
-  }
-  if (keys.length === 0) {
-    return new dfd.DataFrame({ "Cambio Completa": [1, -1], Cantidad: [0, 0] });
-  }
-  return new dfd.DataFrame({ "Cambio Completa": keys, Cantidad: vals });
+  return [g, c];
 }
+
 /**
  * Devuelve un DataFrame con los turnos etiquetados usando los archivos seleccionados (turno actual y anterior).
  * Equivalente a get_inventory_current_and_previous_turn de Python.
@@ -134,43 +118,16 @@ export async function getInventoryCurrentAndPreviousTurn(files) {
   df = addTurn(df);
   return df;
 }
-// DataUtils.js
-// Utilidades para manejo de archivos CSV y análisis de inventario usando danfojs en el navegador
-// Autor: Adaptado profesionalmente desde DataUtils.py
-
-import * as dfd from "danfojs";
-import Papa from "papaparse";
 
 /**
- * Lee todos los archivos CSV en la carpeta especificada y devuelve un array con el nombre del último archivo de cada día.
+ * Lee todos los archivos CSV en la carpeta especificada y devuelve un array con el nombre del último archivo.
  * @param {File[]} files - Lista de archivos File (input type="file" multiple)
  * @returns {Promise<string[]>} - Nombres de archivos seleccionados (uno por día)
  */
 export async function getAllData(files) {
   // Extraer fecha de nombre de archivo: YYYYMMDD-HHMMSS.csv
-  const fileInfos = files
-    .filter((f) => f.name.toLowerCase().endsWith(".csv"))
-    .map((f) => {
-      const [dateStr] = f.name.split(".");
-      const dt = parseDateTimeFromFilename(dateStr);
-      return {
-        file: f,
-        name: f.name,
-        date: dt,
-        day: formatLocalDay(dt),
-      };
-    });
-  // Agrupar por día y obtener el archivo más reciente de cada día
-  const byDay = {};
-  for (const info of fileInfos) {
-    if (!byDay[info.day] || info.date > byDay[info.day].date) {
-      byDay[info.day] = info;
-    }
-  }
-  // Ordenar por fecha descendente
-  return Object.values(byDay)
-    .sort((a, b) => b.date - a.date)
-    .map((info) => info.name);
+  const fileInfos = sortFilesByLastModified(files);
+  return [...new Set(fileInfos.map((f) => f.name))];
 }
 
 /**
@@ -199,26 +156,42 @@ function formatLocalDay(dt) {
 }
 
 /**
+ * Ordena los archivos por lastModifiedDate
+ * @param {File[]} files
+ * @returns {File[]} archivos ordenados por fecha de modificacion descendente
+ */
+export function sortFilesByLastModified(files) {
+  return files
+    .filter((f) => f.name.toLowerCase().endsWith(".csv"))
+    .map((f) => {
+      const dt = new Date(f.lastModified);
+      return {
+        file: f,
+        name: f.name,
+        date: dt,
+        // usar fecha completa YYYY-MM-DD en lugar de número de día de semana
+        day: formatLocalDay(dt),
+        hour: dt.getHours(),
+        lastModified: f.lastModified,
+      };
+    })
+    .sort((a, b) => {
+      const dateA = a.lastModified;
+      const dateB = b.lastModified;
+      return dateB - dateA;
+    });
+}
+
+/**
  * Obtiene los archivos correspondientes al turno actual y anterior.
  * @param {File[]} files
  * @returns {Promise<string[]>} - Nombres de archivos del turno actual y anterior
  */
 export async function getTurns(files) {
-  // Ordenar archivos por fecha descendente
-  const fileInfos = files
-    .filter((f) => f.name.toLowerCase().endsWith(".csv"))
-    .map((f) => {
-      const [dateStr] = f.name.split(".");
-      const dt = parseDateTimeFromFilename(dateStr);
-      return {
-        file: f,
-        name: f.name,
-        date: dt,
-        day: formatLocalDay(dt),
-        hour: dt.getHours(),
-      };
-    })
-    .sort((a, b) => b.date - a.date);
+  // ordenar y filtrar por fecha de ultima modificacion
+
+  const fileInfos = sortFilesByLastModified(files);
+
   if (fileInfos.length === 0) return [];
   const actual = fileInfos[0];
   // Definir turnos
@@ -245,6 +218,54 @@ export async function getTurns(files) {
 }
 
 /**
+ * Obtiene los datos de 1 solo archivo (el más reciente) para vista rápida.
+ * @param {File[]} file
+ * @returns {Promise<dfd.DataFrame>}
+ */
+export async function getQuickData(file) {
+  if (!file || file.length === 0) return new dfd.DataFrame([]);
+  let df = await file.text();
+  df = Papa.parse(df, { header: true, skipEmptyLines: true });
+  df = df.data.map((row) => ({
+    ...row,
+  }));
+  df = df.filter(
+    (row) =>
+      row["LOCATION"] !== "ULOG" &&
+      row["LOCATION"] !== "DPBQ" &&
+      row["ESTADO"] === "STOCK" &&
+      row["DEPO"] === "Planta SFM" &&
+      row["COMPLETA"] === "Saldo"
+  );
+  df = df.map((row) => {
+    return {
+      ROLL_ID: row["ROLL_ID"],
+      PAPER_CODE: row["PAPER_CODE"],
+      WIDTH: row["WIDTH"],
+      ESTADO: row["ESTADO"],
+      COMPLETA: row["COMPLETA"],
+    };
+  });
+  const requiredCols = ["PAPER_CODE", "WIDTH", "ROLL_ID"];
+
+  const filtered = new dfd.DataFrame(df).loc({
+    columns: requiredCols.filter((col) =>
+      new dfd.DataFrame(df).columns.includes(col)
+    ),
+  });
+  if (filtered.shape[0] === 0) {
+    return new dfd.DataFrame([], {
+      columns: ["PAPER_CODE", "WIDTH", "Cantidad"],
+    });
+  }
+
+  const grouped = filtered.groupby(["PAPER_CODE", "WIDTH"]);
+  const counted = grouped.col(["ROLL_ID"]).count();
+  // Renombrar la columna de conteo a 'Cantidad'
+  return counted.rename({ ROLL_ID_count: "Cantidad" });
+}
+
+/**
  * Lee y concatena los archivos CSV seleccionados, filtrando según reglas de negocio.
  * @param {File[]} files - Archivos File
  * @returns {Promise<dfd.DataFrame>} - DataFrame concatenado y filtrado
@@ -258,11 +279,26 @@ export async function readDataFrame(files) {
       const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
       if (!parsed.data || parsed.data.length === 0) continue;
       // Agregar columna de fecha desde el nombre del archivo
-      const [dateStr] = file.name.split(".");
-      const dateCreated = parseDateTimeFromFilename(dateStr);
+
+      const dateCreated = file.lastModifiedDate || file.lastModified;
+      if (!dateCreated) continue;
+      // Asegurar que dateCreated es un objeto Date válido
+      let dateObj =
+        dateCreated instanceof Date ? dateCreated : new Date(dateCreated);
+      if (isNaN(dateObj.getTime())) continue;
+      // formato local YYYY-MM-DD HH:MM:SS
+      dateObj = new Date(
+        dateObj.getFullYear(),
+        dateObj.getMonth(),
+        dateObj.getDate(),
+        dateObj.getHours(),
+        dateObj.getMinutes(),
+        dateObj.getSeconds()
+      );
+      //
       let dataWithDate = parsed.data.map((row) => ({
         ...row,
-        "Date created": dateCreated,
+        "Date created": dateObj,
       }));
       // Filtrar según reglas de negocio
       dataWithDate = dataWithDate.filter(
@@ -455,5 +491,3 @@ export function countItems(df) {
   // Renombrar la columna de conteo a 'Cantidad'
   return counted.rename({ ROLL_ID_count: "Cantidad" });
 }
-
-// Puedes agregar más funciones según sea necesario, siguiendo el mismo patrón modular y profesional.

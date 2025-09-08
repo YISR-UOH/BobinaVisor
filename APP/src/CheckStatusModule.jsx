@@ -5,14 +5,10 @@ import "./style.css";
 export default function CheckStatusModule({ files, setActualTurn }) {
   const { data, loading, error, turnInfo } = useCheckStatus(files);
   const [total, setTotal] = useState(0);
-
+  // revisar error aqui
   useEffect(() => {
-    if (data && data.rows) {
-      const sum = data.rows.reduce(
-        (acc, row) => acc + Number(row?.[0] * row?.[1] || 0),
-        0
-      );
-      setTotal(sum);
+    if (data) {
+      setTotal(data[0] + data[1]);
     } else {
       setTotal(0);
     }
@@ -50,7 +46,7 @@ export default function CheckStatusModule({ files, setActualTurn }) {
     return <div className="my-4 text-red-600">Error CheckStatus: {error}</div>;
   if (!data) return null;
 
-  const hasRows = data?.rows?.length > 0;
+  const hasRows = data.length > 0;
 
   return (
     <section className="w-full h-full flex">
@@ -80,13 +76,13 @@ export default function CheckStatusModule({ files, setActualTurn }) {
             <div className="rounded-md bg-sky-50 px-2 py-1 text-sky-900 ring-1 ring-inset ring-sky-200">
               <span className="block text-[11px] font-medium">Generacion</span>
               <span className="text-base font-semibold">
-                {Number(data.rows?.[0]?.[0] * data.rows?.[0]?.[1] || 0)}
+                {Number(data[0] || 0)}
               </span>
             </div>
             <div className="rounded-md bg-sky-50 px-2 py-1 text-sky-900 ring-1 ring-inset ring-sky-200">
               <span className="block text-[11px] font-medium">Consumo</span>
               <span className="text-base font-semibold">
-                {Number(data.rows?.[1]?.[0] * data.rows?.[1]?.[1] || 0)}
+                {Number(data[1] || 0)}
               </span>
             </div>
           </div>
