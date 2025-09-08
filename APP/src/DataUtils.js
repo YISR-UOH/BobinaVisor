@@ -172,6 +172,7 @@ export function sortFilesByLastModified(files) {
         // usar fecha completa YYYY-MM-DD en lugar de número de día de semana
         day: formatLocalDay(dt),
         hour: dt.getHours(),
+        minute: dt.getMinutes(),
         lastModified: f.lastModified,
       };
     })
@@ -349,20 +350,65 @@ export async function readDataFrame(files) {
  * @returns {Promise<dfd.DataFrame>}
  */
 export async function getLastNDays(files, n = 20) {
-  const allData = await getAllData(files);
-  const selectedNames = allData.slice(0, n);
-  const selectedFiles = files.filter((f) => selectedNames.includes(f.name));
+  let allData = await getAllData(files);
+  // obtener los archivos mas recientes por dia
+  allData = sortFilesByLastModified(
+    files.filter((f) => allData.includes(f.name))
+  );
+  if (allData.length === 0) return new dfd.DataFrame([]);
+
+  const selectedFiles = [];
+  const seenDays = {};
+  for (const fileInfo of allData) {
+    const day = fileInfo.day;
+    if (!seenDays[day]) {
+      seenDays[day] = {
+        hour: fileInfo.hour,
+        name: fileInfo.name,
+        minute: fileInfo.minute,
+      };
+    } else {
+      if (
+        fileInfo.hour >= seenDays[day].hour &&
+        fileInfo.minute >= seenDays[day].minute
+      ) {
+        seenDays[day] = {
+          hour: fileInfo.hour,
+          name: fileInfo.name,
+          minute: fileInfo.minute,
+        };
+      }
+    }
+    if (seenDays.size > n) break; // ya tenemos n dias
+  }
+  for (const day in seenDays) {
+    selectedFiles.push(files.find((f) => f.name === seenDays[day].name));
+  }
+  // ordenar selectedFiles por fecha descendente
+  selectedFiles.sort((a, b) => b.lastModified - a.lastModified);
+  if (selectedFiles.length === 0) return new dfd.DataFrame([]);
+  // leer y concatenar
   const dfs = [];
   for (const file of selectedFiles) {
     try {
       const text = await file.text();
       const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
       if (!parsed.data || parsed.data.length === 0) continue;
-      const [dateStr] = file.name.split(".");
-      const dateCreated = parseDateTimeFromFilename(dateStr);
+      const dateCreated = file.lastModifiedDate || file.lastModified;
+      if (!dateCreated) continue;
+      // Asegurar que dateCreated es un objeto Date válido
+      let dateObj =
+        dateCreated instanceof Date ? dateCreated : new Date(dateCreated);
+      if (isNaN(dateObj.getTime())) continue;
+      // formato local YYYY-MM-DD HH:MM:SS
+      dateObj = new Date(
+        dateObj.getFullYear(),
+        dateObj.getMonth(),
+        dateObj.getDate()
+      );
       let dataWithDate = parsed.data.map((row) => ({
         ...row,
-        "Date created": dateCreated,
+        "Date created": dateObj,
       }));
       dataWithDate = dataWithDate.filter(
         (row) =>
