@@ -47,6 +47,7 @@ export default function CheckStatusModule({ files, setActualTurn }) {
   if (!data) return null;
 
   const hasRows = data.length > 0;
+  return null;
 
   return (
     <section className="w-full h-full flex">

@@ -303,12 +303,7 @@ function App() {
               </div>
             )}
             {files.length > 0 && (
-              <div className="w-full sm:w-80 flex-none h-full">
-                <CheckStatusModule
-                  files={files}
-                  setActualTurn={setActualTurn}
-                />
-              </div>
+              <CheckStatusModule files={files} setActualTurn={setActualTurn} />
             )}
             {totalItems > 0 && actualTurn && (
               <article className="w-full sm:w-80 flex-none h-full rounded-md border border-slate-200 bg-white p-2 shadow-sm flex flex-col">
@@ -318,7 +313,7 @@ function App() {
                   </span>
                 </div>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Turno Actual: {actualTurn?.turno || "N/A"}
+                  Stock Actual: {actualTurn?.turno || "N/A"}
                 </h2>
                 <div className="text-sm text-slate-400">
                   {actualTurn?.date ? actualTurn.date.toLocaleString() : null}
@@ -357,7 +352,7 @@ function App() {
       </div>
       <footer className="mt-auto bg-white border-t border-gray-200">
         <div className="max-w-5xl mx-auto px-4 py-3 text-xs text-gray-500 flex items-center justify-between">
-          <span>© {new Date().getFullYear()} BobinaVisor v1.0.1</span>
+          <span>© {new Date().getFullYear()} BobinaVisor v1.0.5</span>
         </div>
       </footer>
     </div>
