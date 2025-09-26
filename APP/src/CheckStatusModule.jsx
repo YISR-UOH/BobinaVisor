@@ -64,14 +64,8 @@ export default function CheckStatusModule({ files, setActualTurn }) {
             </span>
           </div>
           <h2 className="text-lg font-semibold text-slate-900">
-            Turno Anterior: {turnInfo.previousTurno || "N/A"}
+            Diferencia entre Turnos
           </h2>
-          <div className="text-sm text-slate-400">
-            {turnInfo.previousDate
-              ? turnInfo.previousDate.toLocaleString()
-              : null}
-            {turnInfo?.previousName ? ` (${turnInfo.previousName})` : null}
-          </div>
           <div className="mt-1 grid grid-cols-2 gap-2 text-sm">
             <div className="rounded-md bg-sky-50 px-2 py-1 text-sky-900 ring-1 ring-inset ring-sky-200">
               <span className="block text-[11px] font-medium">Generacion</span>

@@ -10,8 +10,8 @@ export default function CountItemsModule({ files, setTotalItems }) {
     () => new Set(["1930", "2100", "2250", "2350", "2450"]),
     []
   );
-  const columns = data?.columns ?? [];
-  const rows = data?.rows ?? [];
+  const columns = useMemo(() => data?.columns ?? [], [data]);
+  const rows = useMemo(() => data?.rows ?? [], [data]);
   const { pIdx, wIdx, cIdx } = useMemo(() => {
     const pIdx = columns.indexOf("PAPER_CODE");
     const wIdx = columns.indexOf("WIDTH");
@@ -106,7 +106,6 @@ export default function CountItemsModule({ files, setTotalItems }) {
             </span>
           </div>
 
-          {/* TODO: lg:grid-cols-5 o lg:grid-cols-4 */}
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {filteredPapers.map(([paper, info]) => (
               <article

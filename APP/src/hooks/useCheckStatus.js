@@ -1,10 +1,4 @@
 import { useEffect, useState } from "react";
-import {
-  getTurns,
-  readDataFrame,
-  addTurn,
-  checkChangeStatus,
-} from "../DataUtils";
 
 /**
  * Obtiene el conteo de rollos por código y ancho (turno actual, saldo)
@@ -50,6 +44,8 @@ export function useCheckStatus(files) {
     setError(null);
     (async () => {
       try {
+        const { getTurns, readDataFrame, addTurn, checkChangeStatus } =
+          await import("../DataUtils");
         const turnFilesNames = await getTurns(files);
         if (!turnFilesNames.length) {
           setData(null);

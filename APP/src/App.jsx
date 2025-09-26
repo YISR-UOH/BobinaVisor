@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CountItemsModule from "./CountItemsModule";
 import CheckStatusModule from "./CheckStatusModule";
-import SummaryTableModule from "./SummaryTableModule";
+import { lazy, Suspense } from "react";
+const SummaryTableModule = lazy(() => import("./SummaryTableModule"));
 import "./style.css";
-
-import { getAllData } from "./DataUtils";
+import TurnResume from "./TurnResume";
 import {
   isFsSupported,
   saveDirectoryHandle,
@@ -20,34 +20,32 @@ function App() {
   const fileInputRef = useRef(null);
   const [totalItems, setTotalItems] = useState(0);
   const [actualTurn, setActualTurn] = useState(null);
-  const state = { files: null, n: null, path: null };
-  try {
-    const saved_files = localStorage.getItem("bobinavisor:filesMeta");
-    if (saved_files) {
-      const parsed = JSON.parse(saved_files);
-      if (Array.isArray(parsed)) {
-        state.files = parsed;
+  const [loader, setLoader] = useState(false);
+  // Restaurar configuraciones persistidas al montar
+  useEffect(() => {
+    try {
+      const saved_n = localStorage.getItem("bobinavisor:n");
+      if (saved_n) {
+        const parsed = JSON.parse(saved_n);
+        if (typeof parsed === "number" && !Number.isNaN(parsed)) {
+          setN(parsed);
+        }
       }
+    } catch (e) {
+      console.debug("Error leyendo bobinavisor:n", e);
     }
-  } catch {}
-  try {
-    const saved_n = localStorage.getItem("bobinavisor:n");
-    if (saved_n) {
-      const parsed = JSON.parse(saved_n);
-      if (parsed && typeof parsed === "number") {
-        state.n = parsed;
+    try {
+      const saved_path = localStorage.getItem("bobinavisor:path");
+      if (saved_path) {
+        const parsed = JSON.parse(saved_path);
+        if (typeof parsed === "string" && parsed) {
+          setPath(parsed);
+        }
       }
+    } catch (e) {
+      console.debug("Error leyendo bobinavisor:path", e);
     }
-  } catch {}
-  try {
-    const saved_path = localStorage.getItem("bobinavisor:path");
-    if (saved_path) {
-      const parsed = JSON.parse(saved_path);
-      if (parsed && typeof parsed === "string") {
-        state.path = parsed;
-      }
-    }
-  } catch {}
+  }, []);
 
   useEffect(() => {
     if (n) {
@@ -78,14 +76,7 @@ function App() {
     }
   }, [n, files, path]);
 
-  useEffect(() => {
-    if (state.n && state.n !== n) {
-      if (typeof state.n === "number") setN(state.n);
-    }
-    if (typeof state.path === "string" && state.path && state.path !== path) {
-      setPath(state.path);
-    }
-  }, []);
+  // (Mantener este efecto vacío eliminado; la restauración se hace arriba)
 
   useEffect(() => {
     (async () => {
@@ -93,7 +84,9 @@ function App() {
         if (navigator.storage && navigator.storage.persist) {
           await navigator.storage.persist();
         }
-      } catch {}
+      } catch (e) {
+        console.debug("navigator.storage.persist no disponible", e);
+      }
     })();
   }, []);
 
@@ -102,32 +95,36 @@ function App() {
     const csvOnly = fileArr.filter((f) =>
       f.name.toLowerCase().endsWith(".csv")
     );
+    const { getAllData } = await import("./DataUtils");
     const names = await getAllData(csvOnly);
     const filtered = csvOnly.filter((f) => names.includes(f.name));
     setFiles(filtered);
   };
 
-  const scanFromSavedDirectory = async () => {
+  const scanFromSavedDirectory = useCallback(async () => {
     if (!isFsSupported()) return;
+
     try {
       const handle = await getSavedDirectoryHandle();
       if (!handle) return;
       const hasPerm = await verifyPermission(handle, false);
       if (!hasPerm) return;
+      setLoader(true);
       const allFiles = await readCsvFilesFromDirectory(handle, {
         max: n,
         sortBy: "lastModified",
         order: "desc",
       });
       if (allFiles.length > 0) {
-        const any = allFiles[0];
         setPath(handle.name || "");
         await handleFiles(allFiles);
       }
+      setLoader(false);
     } catch (e) {
       console.warn("No se pudo escanear el directorio guardado", e);
+      setLoader(false);
     }
-  };
+  }, [n]);
 
   useEffect(() => {
     let intervalId;
@@ -142,7 +139,7 @@ function App() {
     return () => {
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, []);
+  }, [scanFromSavedDirectory]);
 
   return (
     <div className="min-h-dvh bg-slate-50">
@@ -151,6 +148,35 @@ function App() {
           <h1 className="text-xl font-semibold text-slate-900">
             Resumen de Inventario de bobinas.
           </h1>
+          {loader && (
+            <div className="flex flex-col items-center">
+              <div className="mt-2 text-sm text-slate-500">
+                Cargando archivos...
+              </div>
+              <div className="mt-2">
+                <svg
+                  className="animate-spin h-5 w-5 text-slate-500 mx-auto"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+          )}
         </div>
       </header>
       <div className=" max-w-full px-2 py-2">
@@ -177,6 +203,7 @@ function App() {
                     const dirHandle = await window.showDirectoryPicker();
                     const ok = await verifyPermission(dirHandle, false);
                     if (!ok) return;
+                    setLoader(true);
                     await saveDirectoryHandle(dirHandle);
                     setPath(dirHandle.name || "");
                     const allFiles = await readCsvFilesFromDirectory(
@@ -184,11 +211,13 @@ function App() {
                       { max: n, sortBy: "lastModified", order: "desc" }
                     );
                     await handleFiles(allFiles);
+                    setLoader(false);
                   } catch (e) {
                     console.warn(
                       "Selección de directorio cancelada o fallida",
                       e
                     );
+                    setLoader(false);
                   }
                 }}
               >
@@ -252,6 +281,29 @@ function App() {
           <div className="flex flex-wrap items-stretch gap-3">
             {files.length > 0 && (
               <div className="w-full sm:w-80 flex-none h-full">
+                {actualTurn && actualTurn.previousTurno && (
+                  <TurnResume
+                    files={files}
+                    turnName={actualTurn.previousTurno}
+                    flag={false}
+                  />
+                )}
+              </div>
+            )}
+
+            {files.length > 0 && (
+              <div className="w-full sm:w-80 flex-none h-full">
+                {actualTurn && actualTurn.turno && (
+                  <TurnResume
+                    files={files}
+                    turnName={actualTurn.turno}
+                    flag={true}
+                  />
+                )}
+              </div>
+            )}
+            {files.length > 0 && (
+              <div className="w-full sm:w-80 flex-none h-full">
                 <CheckStatusModule
                   files={files}
                   setActualTurn={setActualTurn}
@@ -290,10 +342,16 @@ function App() {
             <CountItemsModule files={files} setTotalItems={setTotalItems} />
           )}
           {files.length > 0 && (
-            <SummaryTableModule
-              files={files}
-              n={Math.min(100, Math.max(1, Math.floor(n / 24)))}
-            />
+            <Suspense
+              fallback={
+                <div className="my-4 text-slate-700">Cargando resumen...</div>
+              }
+            >
+              <SummaryTableModule
+                files={files}
+                n={Math.min(100, Math.max(1, Math.floor(n / 24)))}
+              />
+            </Suspense>
           )}
         </div>
       </div>

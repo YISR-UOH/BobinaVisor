@@ -42,6 +42,16 @@ export default defineConfig({
     }),
   ],
   build: {
-    chunkSizeWarningLimit: 5 * 1024 * 1024,
+    // Vite expects this limit in KB, so 5 MB = 5120 KB
+    chunkSizeWarningLimit: 8 * 1024,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-recharts": ["recharts"],
+          "vendor-danfo": ["danfojs"],
+        },
+      },
+    },
   },
 });

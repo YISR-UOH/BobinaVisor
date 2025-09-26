@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { getLastNDays, countItemsbyDate } from "../DataUtils";
 
 /**
  * Custom hook para obtener el resumen de conteo por fecha y estado 'COMPLETA'.
@@ -23,6 +22,7 @@ export function useSummaryData(files, n = 20) {
     setError(null);
     (async () => {
       try {
+        const { getLastNDays, countItemsbyDate } = await import("../DataUtils");
         const df = await getLastNDays(files, n);
         if (!df || df.shape[0] === 0) {
           setData(null);

@@ -1,2 +1,10 @@
 /20250821-230324.csv
 /DataUtils.py
+/generated_files
+.vscode
+.DS_Store
+__pycache__
+*.pyc
+*.ipynb
+*.py
+.gitignore

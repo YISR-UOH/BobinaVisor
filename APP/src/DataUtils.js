@@ -45,9 +45,6 @@ export function checkChangeStatus(df) {
     }
   }
 
-  // Inicializar columna 'Cambio Completa' en 0
-  let cambioCompleta = Array(df.shape[0]).fill(0);
-
   // Mapas por turno para acceso rápido sin setIndex (evita errores cuando hay DF vacío)
   const completaByTurn1 = new Map(); // ROLL_ID -> COMPLETA
   const completaByTurn0 = new Map(); // ROLL_ID -> COMPLETA
@@ -74,13 +71,11 @@ export function checkChangeStatus(df) {
     const completa_1 = completaByTurn1.get(roll_id);
     if (!completaByTurn0.has(roll_id)) {
       if (completa_1 === "Saldo") {
-        const idx = idxMap[`${roll_id}_1`];
         g = g + 1;
       }
     } else {
       const completa_0 = completaByTurn0.get(roll_id);
       if (completa_1 === "Saldo" && completa_0 === "Completa") {
-        const idx = idxMap[`${roll_id}_1`];
         g = g + 1;
       }
     }
@@ -92,7 +87,6 @@ export function checkChangeStatus(df) {
     if (!completaByTurn1.has(roll_id)) {
       const completa_0 = completaByTurn0.get(roll_id);
       if (completa_0 === "Saldo") {
-        const idx = idxMap[`${roll_id}_0`];
         c = c - 1;
       }
     }
@@ -135,17 +129,17 @@ export async function getAllData(files) {
  * @param {string} name
  * @returns {Date}
  */
-function parseDateTimeFromFilename(name) {
-  // name: '20250821-230324'
-  const [date, time] = name.split("-");
-  const year = +date.slice(0, 4);
-  const month = +date.slice(4, 6) - 1;
-  const day = +date.slice(6, 8);
-  const hour = +time.slice(0, 2);
-  const min = +time.slice(2, 4);
-  const sec = +time.slice(4, 6);
-  return new Date(year, month, day, hour, min, sec);
-}
+// function parseDateTimeFromFilename(name) {
+//   // name: '20250821-230324'
+//   const [date, time] = name.split("-");
+//   const year = +date.slice(0, 4);
+//   const month = +date.slice(4, 6) - 1;
+//   const day = +date.slice(6, 8);
+//   const hour = +time.slice(0, 2);
+//   const min = +time.slice(2, 4);
+//   const sec = +time.slice(4, 6);
+//   return new Date(year, month, day, hour, min, sec);
+// }
 
 // Formatea una fecha a YYYY-MM-DD en hora local (evita desplazamientos por UTC)
 function formatLocalDay(dt) {
@@ -357,33 +351,21 @@ export async function getLastNDays(files, n = 20) {
   );
   if (allData.length === 0) return new dfd.DataFrame([]);
 
-  const selectedFiles = [];
-  const seenDays = {};
-  for (const fileInfo of allData) {
-    const day = fileInfo.day;
-    if (!seenDays[day]) {
-      seenDays[day] = {
-        hour: fileInfo.hour,
-        name: fileInfo.name,
-        minute: fileInfo.minute,
-      };
-    } else {
-      if (
-        fileInfo.hour >= seenDays[day].hour &&
-        fileInfo.minute >= seenDays[day].minute
-      ) {
-        seenDays[day] = {
-          hour: fileInfo.hour,
-          name: fileInfo.name,
-          minute: fileInfo.minute,
-        };
-      }
+  // Use a Map keyed by day to keep the single most recent file per day
+  const byDay = new Map();
+  for (const info of allData) {
+    const prev = byDay.get(info.day);
+    if (!prev) {
+      byDay.set(info.day, info);
+    } else if (info.lastModified > prev.lastModified) {
+      byDay.set(info.day, info);
     }
-    if (seenDays.size > n) break; // ya tenemos n dias
+    if (byDay.size >= n) break; // limit days
   }
-  for (const day in seenDays) {
-    selectedFiles.push(files.find((f) => f.name === seenDays[day].name));
-  }
+  const selectedFiles = Array.from(byDay.values())
+    .sort((a, b) => b.lastModified - a.lastModified)
+    .map((fi) => files.find((f) => f.name === fi.name))
+    .filter(Boolean);
   // ordenar selectedFiles por fecha descendente
   selectedFiles.sort((a, b) => b.lastModified - a.lastModified);
   if (selectedFiles.length === 0) return new dfd.DataFrame([]);
@@ -520,7 +502,9 @@ export function countItems(df) {
 
   // Agrupar y contar
   if (filtered.shape[0] === 0) {
-    return new dfd.DataFrame({ columns: ["PAPER_CODE", "WIDTH", "Cantidad"] });
+    return new dfd.DataFrame([], {
+      columns: ["PAPER_CODE", "WIDTH", "Cantidad"],
+    });
   }
   // Verificar columnas para agrupar y contar
   const requiredCols = ["PAPER_CODE", "WIDTH", "ROLL_ID"];
@@ -536,4 +520,71 @@ export function countItems(df) {
   const counted = grouped.col(["ROLL_ID"]).count();
   // Renombrar la columna de conteo a 'Cantidad'
   return counted.rename({ ROLL_ID_count: "Cantidad" });
+}
+
+/**
+ * retorna la diferencia entre 2 archivos.
+ */
+
+export async function getTurnResume(files) {
+  // obtener el archivo mas reciente y el mas antiguo
+  if (!files || files.length === 0) {
+    return null;
+  }
+  // ordenar los archivos por fecha de modificacion descendiente
+  const sortedFiles = files.slice().sort((a, b) => {
+    const dateA = a.lastModifiedDate || a.lastModified;
+    const dateB = b.lastModifiedDate || b.lastModified;
+    return dateB - dateA;
+  });
+  const latestFile = sortedFiles[0];
+  const oldestFile = sortedFiles[sortedFiles.length - 1];
+  // leer los archivos y obtener los dataframes
+  const readFile = async (file) => {
+    let df = await file.text();
+    df = Papa.parse(df, { header: true, skipEmptyLines: true });
+    df = df.data.map((row) => ({
+      ...row,
+    }));
+    df = df.filter(
+      (row) =>
+        row["LOCATION"] !== "ULOG" &&
+        row["LOCATION"] !== "DPBQ" &&
+        row["ESTADO"] === "STOCK" &&
+        row["DEPO"] === "Planta SFM" &&
+        row["COMPLETA"] === "Saldo"
+    );
+    df = df.map((row) => {
+      return {
+        ROLL_ID: row["ROLL_ID"],
+        PAPER_CODE: row["PAPER_CODE"],
+        WIDTH: row["WIDTH"],
+        ESTADO: row["ESTADO"],
+        COMPLETA: row["COMPLETA"],
+      };
+    });
+    return new dfd.DataFrame(df);
+  };
+  const dfLatest = await readFile(latestFile);
+  const dfOldest = await readFile(oldestFile);
+  if (dfLatest.shape[0] === 0 || dfOldest.shape[0] === 0) {
+    return null;
+  }
+  // agregar columna 'Turno' a ambos dataframes, latest = 1, oldest = 0
+  const addTurnColumn = (df, turno) => {
+    const turnoCol = Array(df.shape[0]).fill(turno);
+    df = df.resetIndex({ inplace: false });
+    df.addColumn("Turno", turnoCol, { inplace: true });
+    return df;
+  };
+  const dfLatestTurn = addTurnColumn(dfLatest, 1);
+  const dfOldestTurn = addTurnColumn(dfOldest, 0);
+  // concatenar ambos dataframes
+  const dfConcat = dfd.concat({
+    dfList: [dfLatestTurn, dfOldestTurn],
+    axis: 0,
+  });
+  // contar los cambios de estado 'COMPLETA' entre turnos
+  const result = checkChangeStatus(dfConcat);
+  return result; // [generados, consumidos]
 }
