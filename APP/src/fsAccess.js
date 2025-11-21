@@ -79,9 +79,9 @@ export async function verifyPermission(handle, readWrite = false) {
 }
 
 export async function readCsvFilesFromDirectory(dirHandle, options = {}) {
-  const { max, sortBy = "name", order = "desc" } = options;
+  const { max, sortBy = "name", order = "desc", recurse = false } = options;
   const files = [];
-  async function recurseDirectory(handle) {
+  async function processDirectory(handle, depth = 0) {
     for await (const [name, entry] of handle.entries()) {
       try {
         if (entry.kind === "file") {
@@ -89,15 +89,15 @@ export async function readCsvFilesFromDirectory(dirHandle, options = {}) {
             const file = await entry.getFile();
             files.push(file);
           }
-        } else if (entry.kind === "directory") {
-          await recurseDirectory(entry);
+        } else if (entry.kind === "directory" && recurse) {
+          await processDirectory(entry, depth + 1);
         }
       } catch (e) {
         console.warn(`No se pudo leer entrada ${name}`, e);
       }
     }
   }
-  await recurseDirectory(dirHandle);
+  await processDirectory(dirHandle);
   // Optional sort and limit
   let result = files;
   try {
