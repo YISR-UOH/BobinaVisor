@@ -352,7 +352,7 @@ function App() {
       </div>
       <footer className="mt-auto bg-white border-t border-gray-200">
         <div className="max-w-5xl mx-auto px-4 py-3 text-xs text-gray-500 flex items-center justify-between">
-          <span>© {new Date().getFullYear()} BobinaVisor v1.0.5</span>
+          <span>© {new Date().getFullYear()} BobinaVisor v1.0.7</span>
         </div>
       </footer>
     </div>
