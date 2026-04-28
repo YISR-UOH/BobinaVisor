@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import CountItemsModule from "./CountItemsModule";
+import CountItemsModule_COMPLETA from "./CountItemsModule_Completa";
 import CheckStatusModule from "./CheckStatusModule";
 import { lazy, Suspense } from "react";
 const SummaryTableModule = lazy(() => import("./SummaryTableModule"));
@@ -21,6 +22,8 @@ function App() {
   const [totalItems, setTotalItems] = useState(0);
   const [actualTurn, setActualTurn] = useState(null);
   const [loader, setLoader] = useState(false);
+  const [includeSubdirs, setIncludeSubdirs] = useState(false);
+  const [selectorEstado, setSelectorEstado] = useState("SALDO");
   // Restaurar configuraciones persistidas al montar
   useEffect(() => {
     try {
@@ -44,6 +47,17 @@ function App() {
       }
     } catch (e) {
       console.debug("Error leyendo bobinavisor:path", e);
+    }
+    try {
+      const savedInclude = localStorage.getItem("bobinavisor:includeSubdirs");
+      if (savedInclude) {
+        const parsed = JSON.parse(savedInclude);
+        if (typeof parsed === "boolean") {
+          setIncludeSubdirs(parsed);
+        }
+      }
+    } catch (e) {
+      console.debug("Error leyendo bobinavisor:includeSubdirs", e);
     }
   }, []);
 
@@ -75,6 +89,17 @@ function App() {
       }
     }
   }, [n, files, path]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "bobinavisor:includeSubdirs",
+        JSON.stringify(includeSubdirs)
+      );
+    } catch (e) {
+      console.warn("No se pudo guardar preferencia de subcarpetas", e);
+    }
+  }, [includeSubdirs]);
 
   // (Mantener este efecto vacío eliminado; la restauración se hace arriba)
 
@@ -114,6 +139,7 @@ function App() {
         max: n,
         sortBy: "lastModified",
         order: "desc",
+        recurse: includeSubdirs,
       });
       if (allFiles.length > 0) {
         setPath(handle.name || "");
@@ -124,7 +150,7 @@ function App() {
       console.warn("No se pudo escanear el directorio guardado", e);
       setLoader(false);
     }
-  }, [n]);
+  }, [n, includeSubdirs]);
 
   useEffect(() => {
     let intervalId;
@@ -208,14 +234,19 @@ function App() {
                     setPath(dirHandle.name || "");
                     const allFiles = await readCsvFilesFromDirectory(
                       dirHandle,
-                      { max: n, sortBy: "lastModified", order: "desc" }
+                      {
+                        max: n,
+                        sortBy: "lastModified",
+                        order: "desc",
+                        recurse: includeSubdirs,
+                      },
                     );
                     await handleFiles(allFiles);
                     setLoader(false);
                   } catch (e) {
                     console.warn(
                       "Selección de directorio cancelada o fallida",
-                      e
+                      e,
                     );
                     setLoader(false);
                   }
@@ -269,6 +300,17 @@ function App() {
             >
               Actualizar ahora
             </button>
+            {isFsSupported() && (
+              <label className="flex items-center gap-1 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={includeSubdirs}
+                  onChange={(e) => setIncludeSubdirs(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                Incluir subcarpetas
+              </label>
+            )}
           </div>
         </div>
         {!isFsSupported() && (
@@ -278,7 +320,7 @@ function App() {
           </div>
         )}
         <div className="mt-4">
-          <div className="flex flex-wrap items-stretch gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {files.length > 0 && (
               <div className="w-full sm:w-80 flex-none h-full">
                 {actualTurn && actualTurn.previousTurno && (
@@ -309,7 +351,9 @@ function App() {
               <article className="w-full sm:w-80 flex-none h-full rounded-md border border-slate-200 bg-white p-2 shadow-sm flex flex-col">
                 <div className="mt-1 flex justify-end">
                   <span className="inline-flex items-center rounded-full text-[10px] font-medium px-1 bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200">
-                    Total de Saldos
+                    {selectorEstado === "SALDO"
+                      ? "Total de Saldos"
+                      : "Total de Completas"}
                   </span>
                 </div>
                 <h2 className="text-lg font-semibold text-slate-900">
@@ -334,7 +378,31 @@ function App() {
           </div>
 
           {files.length > 0 && (
+            <div className="mt-4 rounded-lg border-2 border-sky-400 bg-sky-50 p-4 shadow-md">
+              <div className="flex items-center gap-3">
+                <span className="font-semibold text-slate-800">
+                  Filtrar por estado de Bobina:
+                </span>
+                <select
+                  value={selectorEstado}
+                  onChange={(e) => setSelectorEstado(e.target.value)}
+                  className="ml-auto rounded-md border-2 border-sky-400 bg-white px-3 py-2 text-md font-medium text-slate-900 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  <option value="SALDO">SALDO</option>
+                  <option value="COMPLETA">COMPLETA</option>
+                </select>
+              </div>
+            </div>
+          )}
+          {selectorEstado === "SALDO" && files.length > 0 && (
             <CountItemsModule files={files} setTotalItems={setTotalItems} />
+          )}
+          {selectorEstado === "COMPLETA" && files.length > 0 && (
+            // TODO: modificar
+            <CountItemsModule_COMPLETA
+              files={files}
+              setTotalItems={setTotalItems}
+            />
           )}
           {files.length > 0 && (
             <Suspense
@@ -352,7 +420,7 @@ function App() {
       </div>
       <footer className="mt-auto bg-white border-t border-gray-200">
         <div className="max-w-5xl mx-auto px-4 py-3 text-xs text-gray-500 flex items-center justify-between">
-          <span>© {new Date().getFullYear()} BobinaVisor v1.0.7</span>
+          <span>© {new Date().getFullYear()} BobinaVisor v1.0.8</span>
         </div>
       </footer>
     </div>

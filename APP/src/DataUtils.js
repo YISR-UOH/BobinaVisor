@@ -241,7 +241,7 @@ export async function getQuickData(file) {
       COMPLETA: row["COMPLETA"],
     };
   });
-  const requiredCols = ["PAPER_CODE", "WIDTH", "ROLL_ID"];
+  const requiredCols = ["PAPER_CODE", "WIDTH", "ROLL_ID", "COMPLETA"];
 
   const filtered = new dfd.DataFrame(df).loc({
     columns: requiredCols.filter((col) =>
@@ -250,15 +250,64 @@ export async function getQuickData(file) {
   });
   if (filtered.shape[0] === 0) {
     return new dfd.DataFrame([], {
-      columns: ["PAPER_CODE", "WIDTH", "Cantidad"],
+      columns: ["PAPER_CODE", "WIDTH", "Cantidad", "COMPLETA"],
     });
   }
 
-  const grouped = filtered.groupby(["PAPER_CODE", "WIDTH"]);
+  const grouped = filtered.groupby(["PAPER_CODE", "WIDTH", "COMPLETA"]);
   const counted = grouped.col(["ROLL_ID"]).count();
   // Renombrar la columna de conteo a 'Cantidad'
   return counted.rename({ ROLL_ID_count: "Cantidad" });
 }
+
+/**
+ * Obtiene los datos de 1 solo archivo (el más reciente) para vista rápida.
+ * @param {File[]} file
+ * @returns {Promise<dfd.DataFrame>}
+ */
+export async function getQuickData_COMPLETA(file) {
+  if (!file || file.length === 0) return new dfd.DataFrame([]);
+  let df = await file.text();
+  df = Papa.parse(df, { header: true, skipEmptyLines: true });
+  df = df.data.map((row) => ({
+    ...row,
+  }));
+  df = df.filter(
+    (row) =>
+      row["LOCATION"] !== "ULOG" &&
+      row["LOCATION"] !== "DPBQ" &&
+      row["ESTADO"] === "STOCK" &&
+      row["DEPO"] === "Planta SFM" &&
+      row["COMPLETA"] === "Completa"
+  );
+  df = df.map((row) => {
+    return {
+      ROLL_ID: row["ROLL_ID"],
+      PAPER_CODE: row["PAPER_CODE"],
+      WIDTH: row["WIDTH"],
+      ESTADO: row["ESTADO"],
+      COMPLETA: row["COMPLETA"],
+    };
+  });
+  const requiredCols = ["PAPER_CODE", "WIDTH", "ROLL_ID", "COMPLETA"];
+
+  const filtered = new dfd.DataFrame(df).loc({
+    columns: requiredCols.filter((col) =>
+      new dfd.DataFrame(df).columns.includes(col)
+    ),
+  });
+  if (filtered.shape[0] === 0) {
+    return new dfd.DataFrame([], {
+      columns: ["PAPER_CODE", "WIDTH", "Cantidad", "COMPLETA"],
+    });
+  }
+
+  const grouped = filtered.groupby(["PAPER_CODE", "WIDTH", "COMPLETA"]);
+  const counted = grouped.col(["ROLL_ID"]).count();
+  // Renombrar la columna de conteo a 'Cantidad'
+  return counted.rename({ ROLL_ID_count: "Cantidad" });
+}
+
 
 /**
  * Lee y concatena los archivos CSV seleccionados, filtrando según reglas de negocio.
