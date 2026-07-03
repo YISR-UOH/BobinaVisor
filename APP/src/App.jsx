@@ -6,6 +6,7 @@ import { lazy, Suspense } from "react";
 const SummaryTableModule = lazy(() => import("./SummaryTableModule"));
 import "./style.css";
 import TurnResume from "./TurnResume";
+import TurnHistoryModule from "./TurnHistoryModule";
 import {
   isFsSupported,
   saveDirectoryHandle,
@@ -24,6 +25,7 @@ function App() {
   const [loader, setLoader] = useState(false);
   const [includeSubdirs, setIncludeSubdirs] = useState(false);
   const [selectorEstado, setSelectorEstado] = useState("SALDO");
+  const [activeTab, setActiveTab] = useState("dashboard");
   // Restaurar configuraciones persistidas al montar
   useEffect(() => {
     try {
@@ -319,103 +321,135 @@ function App() {
             el botón para volver a seleccionar y actualizar.
           </div>
         )}
-        <div className="mt-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {files.length > 0 && (
-              <div className="w-full sm:w-80 flex-none h-full">
-                {actualTurn && actualTurn.previousTurno && (
-                  <TurnResume
-                    files={files}
-                    turnName={actualTurn.previousTurno}
-                    flag={false}
-                  />
-                )}
-              </div>
-            )}
-
-            {files.length > 0 && (
-              <div className="w-full sm:w-80 flex-none h-full">
-                {actualTurn && actualTurn.turno && (
-                  <TurnResume
-                    files={files}
-                    turnName={actualTurn.turno}
-                    flag={true}
-                  />
-                )}
-              </div>
-            )}
-            {files.length > 0 && (
-              <CheckStatusModule files={files} setActualTurn={setActualTurn} />
-            )}
-            {totalItems > 0 && actualTurn && (
-              <article className="w-full sm:w-80 flex-none h-full rounded-md border border-slate-200 bg-white p-2 shadow-sm flex flex-col">
-                <div className="mt-1 flex justify-end">
-                  <span className="inline-flex items-center rounded-full text-[10px] font-medium px-1 bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200">
-                    {selectorEstado === "SALDO"
-                      ? "Total de Saldos"
-                      : "Total de Completas"}
-                  </span>
-                </div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Stock Actual: {actualTurn?.turno || "N/A"}
-                </h2>
-                <div className="text-sm text-slate-400">
-                  {actualTurn?.date ? actualTurn.date.toLocaleString() : null}
-                  {actualTurn?.name ? ` (${actualTurn.name})` : null}
-                </div>
-                <div className="items-center justify-center mt-1">
-                  <div className="w-full rounded-md px-3 py-2 text-center bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200">
-                    <div className="text-[11px] font-medium uppercase tracking-wide">
-                      Total
-                    </div>
-                    <div className="mt-1 text-4xl font-extrabold tabular-nums">
-                      {totalItems || 0}
-                    </div>
-                  </div>
-                </div>
-              </article>
-            )}
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+          <div className="flex flex-wrap gap-2 border-b border-slate-200 px-1 pb-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab("dashboard")}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                activeTab === "dashboard"
+                  ? "bg-sky-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Tablero actual
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("history")}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                activeTab === "history"
+                  ? "bg-sky-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Histórico por turno
+            </button>
           </div>
 
-          {files.length > 0 && (
-            <div className="mt-4 rounded-lg border-2 border-sky-400 bg-sky-50 p-4 shadow-md">
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-slate-800">
-                  Filtrar por estado de Bobina:
-                </span>
-                <select
-                  value={selectorEstado}
-                  onChange={(e) => setSelectorEstado(e.target.value)}
-                  className="ml-auto rounded-md border-2 border-sky-400 bg-white px-3 py-2 text-md font-medium text-slate-900 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                >
-                  <option value="SALDO">SALDO</option>
-                  <option value="COMPLETA">COMPLETA</option>
-                </select>
-              </div>
-            </div>
-          )}
-          {selectorEstado === "SALDO" && files.length > 0 && (
-            <CountItemsModule files={files} setTotalItems={setTotalItems} />
-          )}
-          {selectorEstado === "COMPLETA" && files.length > 0 && (
-            // TODO: modificar
-            <CountItemsModule_COMPLETA
-              files={files}
-              setTotalItems={setTotalItems}
-            />
-          )}
-          {files.length > 0 && (
-            <Suspense
-              fallback={
-                <div className="my-4 text-slate-700">Cargando resumen...</div>
-              }
-            >
-              <SummaryTableModule
-                files={files}
-                n={Math.min(100, Math.max(1, Math.floor(n / 24)))}
-              />
-            </Suspense>
-          )}
+          <div className="mt-4">
+            {activeTab === "dashboard" ? (
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {files.length > 0 && (
+                    <div className="w-full sm:w-80 flex-none h-full">
+                      {actualTurn && actualTurn.previousTurno && (
+                        <TurnResume
+                          files={files}
+                          turnName={actualTurn.previousTurno}
+                          flag={false}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {files.length > 0 && (
+                    <div className="w-full sm:w-80 flex-none h-full">
+                      {actualTurn && actualTurn.turno && (
+                        <TurnResume
+                          files={files}
+                          turnName={actualTurn.turno}
+                          flag={true}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {files.length > 0 && (
+                    <CheckStatusModule files={files} setActualTurn={setActualTurn} />
+                  )}
+                  {totalItems > 0 && actualTurn && (
+                    <article className="w-full sm:w-80 flex-none h-full rounded-md border border-slate-200 bg-white p-2 shadow-sm flex flex-col">
+                      <div className="mt-1 flex justify-end">
+                        <span className="inline-flex items-center rounded-full text-[10px] font-medium px-1 bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200">
+                          {selectorEstado === "SALDO"
+                            ? "Total de Saldos"
+                            : "Total de Completas"}
+                        </span>
+                      </div>
+                      <h2 className="text-lg font-semibold text-slate-900">
+                        Stock Actual: {actualTurn?.turno || "N/A"}
+                      </h2>
+                      <div className="text-sm text-slate-400">
+                        {actualTurn?.date ? actualTurn.date.toLocaleString() : null}
+                        {actualTurn?.name ? ` (${actualTurn.name})` : null}
+                      </div>
+                      <div className="items-center justify-center mt-1">
+                        <div className="w-full rounded-md px-3 py-2 text-center bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200">
+                          <div className="text-[11px] font-medium uppercase tracking-wide">
+                            Total
+                          </div>
+                          <div className="mt-1 text-4xl font-extrabold tabular-nums">
+                            {totalItems || 0}
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  )}
+                </div>
+
+                {files.length > 0 && (
+                  <div className="mt-4 rounded-lg border-2 border-sky-400 bg-sky-50 p-4 shadow-md">
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-slate-800">
+                        Filtrar por estado de Bobina:
+                      </span>
+                      <select
+                        value={selectorEstado}
+                        onChange={(e) => setSelectorEstado(e.target.value)}
+                        className="ml-auto rounded-md border-2 border-sky-400 bg-white px-3 py-2 text-md font-medium text-slate-900 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      >
+                        <option value="SALDO">SALDO</option>
+                        <option value="COMPLETA">COMPLETA</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+                {selectorEstado === "SALDO" && files.length > 0 && (
+                  <CountItemsModule files={files} setTotalItems={setTotalItems} />
+                )}
+                {selectorEstado === "COMPLETA" && files.length > 0 && (
+                  <CountItemsModule_COMPLETA
+                    files={files}
+                    setTotalItems={setTotalItems}
+                  />
+                )}
+                {files.length > 0 && (
+                  <Suspense
+                    fallback={
+                      <div className="my-4 text-slate-700">Cargando resumen...</div>
+                    }
+                  >
+                    <SummaryTableModule
+                      files={files}
+                      n={Math.min(100, Math.max(1, Math.floor(n / 24)))}
+                    />
+                  </Suspense>
+                )}
+              </>
+            ) : (
+              <TurnHistoryModule files={files} />
+            )}
+          </div>
         </div>
       </div>
       <footer className="mt-auto bg-white border-t border-gray-200">

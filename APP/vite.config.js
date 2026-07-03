@@ -26,7 +26,7 @@ export default defineConfig({
         start_url: "/BobinaVisor/",
         scope: "/BobinaVisor/",
         display: "standalone",
-        background_color: "#ffffff",
+        background_color: "#f8fafc",
         theme_color: "#2563eb",
         icons: [
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
@@ -36,20 +36,30 @@ export default defineConfig({
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
+            background_color: "#8FCE00",
           },
         ],
       },
     }),
   ],
   build: {
-    // Vite expects this limit in KB, so 5 MB = 5120 KB
-    chunkSizeWarningLimit: 8 * 1024,
+    // Vite espera este límite en KB, para 8MB son 8192 KB
+    chunkSizeWarningLimit: 8192,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-recharts": ["recharts"],
-          "vendor-danfo": ["danfojs"],
+        // Corrección: Usar una función en lugar de un objeto para Rolldown
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("react") || id.includes("react-dom")) {
+              return "vendor-react";
+            }
+            if (id.includes("recharts")) {
+              return "vendor-recharts";
+            }
+            if (id.includes("danfojs")) {
+              return "vendor-danfo";
+            }
+          }
         },
       },
     },
